@@ -144,6 +144,10 @@ export function Modal({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const els = () =>
@@ -152,9 +156,12 @@ export function Modal({
           "button, input, select, textarea, a[href]",
         ) ?? [],
       ).filter((el) => !(el as HTMLButtonElement).disabled);
-    els()[0]?.focus();
+    const initial = ref.current?.querySelector<HTMLElement>(
+      'input:not([type="checkbox"]):not([disabled]), textarea, select',
+    );
+    (initial || els()[0])?.focus();
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
       if (e.key === "Tab") {
         const list = els(),
           first = list[0],
@@ -173,7 +180,7 @@ export function Modal({
       document.removeEventListener("keydown", handler);
       previous?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div
       className="modal-backdrop"

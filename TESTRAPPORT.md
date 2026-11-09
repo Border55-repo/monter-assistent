@@ -6,7 +6,7 @@ Produksjonsbygget er kontrollert lokalt på Windows med Node.js 24 og Microsoft 
 |---|---|
 | `npm test` | 69 tester bestått, 2 testfiler |
 | `npm run build` | TypeScript og Vite bestått; PWA-cache generert |
-| `npm run test:e2e` | 11 nettlesertester bestått |
+| `npm run test:e2e` | 13 nettlesertester bestått, også med GitHub Pages-undermappe |
 | `npm audit --json` | 0 rapporterte sårbarheter i den installerte avhengighetslisten |
 | Visuell kontroll | Arbeidsflate i lys/mørk modus, mobil, kalkulator og materialliste |
 
@@ -29,6 +29,8 @@ Nettlesertestene bruker produksjonsbygget og egne, midlertidige nettleserprofile
 9. Nedlasting og gjenoppretting av sikkerhetskopi med prosjekt.
 10. PWA-manifest/ikoner, full offline omlasting med bevarte data, videre beregning og PDF-eksport uten nett.
 11. Faktisk endret serviceworker, oppdateringsknapp, aktivering og beholdte prosjekter/produktregister.
+12. Enkel mobilflyt med produkt først, GLAVA-hurtigvalg og direkte snarvei til materialliste.
+13. Sammenhengende tastetrykk i dialoger med bevart fokus, navneendring og norsk desimalkomma i mengde og pris.
 
 ## Funn som ble rettet
 
@@ -43,4 +45,4 @@ Nettlesertestene bruker produksjonsbygget og egne, midlertidige nettleserprofile
 
 Testene dokumenterer programatferd og matematiske metoder, ikke konstruksjonsteknisk godkjenning. Fysisk installasjon på en iPhone/iPad eller Android-enhet er ikke utført; mobilvisning og PWA-grunnlaget er nettlesertestet. Eksterne datablader er ikke garantert tilgjengelige offline. Ingen lokal lagerstatus eller prisintegrasjon er verifisert.
 
-Kappforslag er mengdegrunnlag uten garanti for optimal fysisk tilpasning; sagspor, renskjæring og byggeplassens opplegg må avklares. Flerbrukertilgang, synkronisering og ekstern produksjonshosting er ikke etablert. Se [README.md](README.md), [CALCULATIONS.md](CALCULATIONS.md) og [RESEARCH.md](RESEARCH.md).
+Kappforslag er mengdegrunnlag uten garanti for optimal fysisk tilpasning; sagspor, renskjæring og byggeplassens opplegg må avklares. Offentlig hosting er etablert på GitHub Pages. Flerbrukertilgang og synkronisering er ikke etablert; egne prosjekter lagres fortsatt lokalt per nettleser. Se [README.md](README.md), [CALCULATIONS.md](CALCULATIONS.md), [RESEARCH.md](RESEARCH.md) og [BRUKERVENNLIGHET.md](BRUKERVENNLIGHET.md).

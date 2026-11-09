@@ -157,7 +157,9 @@ export default function App() {
   useEffect(() => {
     if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
     void navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
+      .register(`${import.meta.env.BASE_URL}sw.js`, {
+        scope: import.meta.env.BASE_URL,
+      })
       .then((reg) => {
         if (reg.waiting) setWaitingWorker(reg.waiting);
         reg.addEventListener("updatefound", () => {
@@ -544,7 +546,7 @@ export default function App() {
                   <div className="hero-actions">
                     <button
                       className="primary orange-button"
-                      onClick={() => startCalculation("insulation")}
+                      onClick={() => startCalculation()}
                     >
                       <Plus size={18} /> Start en beregning
                       <ArrowRight size={18} />

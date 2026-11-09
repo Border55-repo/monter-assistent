@@ -2,7 +2,10 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 const files = [];
 const base = process.env.VITE_BASE_PATH || "/";
-if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base)) throw new Error("VITE_BASE_PATH must be an absolute folder path ending with /.");
+if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base))
+  throw new Error(
+    "VITE_BASE_PATH must be an absolute folder path ending with /.",
+  );
 const prefix = `monter-shell-${createHash("sha256").update(base).digest("hex").slice(0, 8)}-`;
 async function walk(dir) {
   for (const item of await readdir(dir, { withFileTypes: true })) {

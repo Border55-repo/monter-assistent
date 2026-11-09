@@ -26,4 +26,6 @@ Enhetstester for alle motorer, grenseverdier, import, lagring og eksport; E2E fo
 
 ## Research ved videreutvikling
 
+Brukervennlighet: behold enkel visning som standard med produktvalg først. Ekstra forutsetninger/priser skal være tilgjengelige uten tap av inndata. Se `BRUKERVENNLIGHET.md`. Dialogfokus må bare settes ved åpning, ikke ved hvert tastetrykk; siste lukkekall holdes i ref. Mengde/pris i materialdialogen lagres som tekst under skriving og konverteres ved lagring, slik at desimalkomma kan tastes normalt. Nettlesertestene dekker faktiske tastetrykk og mobilens snarvei til resultatet.
+
 Les `RESEARCH.md`, `PRODUCT_SOURCES.md`, `CALCULATIONS.md` og `DATA_VALIDATION.md` før endringer i produktdata eller formler. Bruk gjeldende produsentdokumentasjon. Dokumenter kildebegrensninger. Kontroller nye varianter før verifisering; oppdater lokalt register via UI/import uten å overskrive brukerens data. Researchdato: 09.11.2026. Enkeltprofil og over-/underliggere har ulike metoder. Separat gulvunderlag/fuktsperre krever brukerens valg. Skjult terrasseinnfesting beregnes separat fra toppskruing.

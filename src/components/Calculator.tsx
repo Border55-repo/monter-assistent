@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -45,6 +45,8 @@ interface Props {
 export function Calculator(props: Props) {
   const { kind, input, onChange, products, projects, activeProjectId } = props;
   const [advanced, setAdvanced] = useState(false);
+  const [moreOptions, setMoreOptions] = useState(false);
+  const resultPanel = useRef<HTMLElement>(null);
   const p = products.find((p) => p.id === input.values.productId && p.active);
   const effective = resolveProductInput(kind, input, p),
     v = effective.values;
@@ -57,18 +59,45 @@ export function Calculator(props: Props) {
     unit = "",
     hint = "",
     text = false,
-  ) => (
-    <Field
-      key={key}
-      label={label}
-      value={v[key] ?? ""}
-      onChange={(s) => set(key, s)}
-      unit={unit}
-      hint={hint}
-      text={text}
-      disabled={key !== "price" && key !== "productId" && !!locked[key]}
-    />
-  );
+  ) => {
+    const element = (
+      <Field
+        key={key}
+        label={label}
+        value={v[key] ?? ""}
+        onChange={(s) => set(key, s)}
+        unit={unit}
+        hint={hint}
+        text={text}
+        disabled={key !== "price" && key !== "productId" && !!locked[key]}
+      />
+    );
+    const optional = [
+      "count",
+      "cc",
+      "studWidth",
+      "bottom",
+      "top",
+      "corners",
+      "openingExtras",
+      "lintel",
+      "extraLm",
+      "fixingsPerCross",
+      "screwPack",
+      "screwPrice",
+      "piecesPerPack",
+      "trimLength",
+      "profile",
+      "price",
+    ].includes(key);
+    return optional ? (
+      <div key={key} className="advanced-field">
+        {element}
+      </div>
+    ) : (
+      element
+    );
+  };
   const select = (
     key: string,
     label: string,
@@ -90,6 +119,19 @@ export function Calculator(props: Props) {
     }
   }, [kind, input, products]);
   const result = computed.result;
+  const primaryMetric = result?.metrics.find((m) => m.primary);
+  const quickProducts =
+    kind === "insulation"
+      ? products
+          .filter(
+            (product) =>
+              product.active &&
+              product.manufacturer === "GLAVA" &&
+              product.name.startsWith("GLAVA Proff 34 Plate") &&
+              product.thickness,
+          )
+          .sort((a, b) => a.thickness! - b.thickness!)
+      : [];
   const chooseProduct = (id: string) => {
     const chosen = products.find((p) => p.id === id);
     onChange({
@@ -103,7 +145,9 @@ export function Calculator(props: Props) {
     });
   };
   return (
-    <div className="calculator-page">
+    <div
+      className={`calculator-page ${moreOptions ? "all-options" : "simple-options"}`}
+    >
       <button className="back-link" onClick={props.onBack}>
         <ArrowLeft size={16} /> Alle kalkulatorer
       </button>
@@ -124,8 +168,41 @@ export function Calculator(props: Props) {
         </button>
       </div>
       <p className="page-intro">
-        Legg inn mål og produktdata. Materialbehovet oppdateres automatisk.
+        Velg produkt, oppgi kundens mål og legg resultatet rett i en
+        materialliste.
       </p>
+      <div className="calculator-mode-bar">
+        <span>Begynn med produkt og mål. Resultatet oppdateres direkte.</span>
+        <button
+          className="secondary"
+          aria-expanded={moreOptions}
+          onClick={() => setMoreOptions(!moreOptions)}
+        >
+          {moreOptions ? "Vis færre valg" : "Vis flere valg og priser"}
+          <ChevronDown className={moreOptions ? "rotate" : ""} size={16} />
+        </button>
+      </div>
+      <div className="mobile-result-shortcut">
+        <div>
+          <small>{primaryMetric?.label || "Neste steg"}</small>
+          <strong>
+            {primaryMetric
+              ? `${format(primaryMetric.value)} ${primaryMetric.unit}`
+              : "Velg produkt og fyll inn mål"}
+          </strong>
+        </div>
+        <button
+          onClick={() =>
+            resultPanel.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            })
+          }
+        >
+          {result ? "Vis resultat" : "Se hva som mangler"}
+          <ArrowRight size={16} />
+        </button>
+      </div>
       {props.editing && (
         <div className="notice">
           <Info size={18} /> Du redigerer en lagret beregning. Lagre for å
@@ -134,10 +211,67 @@ export function Calculator(props: Props) {
       )}
       <div className="calculator-layout">
         <div className="calculator-inputs">
+          <section className="panel product-choice">
+            <div className="section-heading">
+              <h2>
+                <span className="step">1</span> Velg produkt
+              </h2>
+            </div>
+            <Select
+              label="Velg produkt"
+              value={v.productId}
+              onChange={chooseProduct}
+              options={[
+                { value: "", label: "Manuelle produktdata (uten produktvalg)" },
+                ...products
+                  .filter(
+                    (product) => product.category === kind && product.active,
+                  )
+                  .map((product) => ({
+                    value: product.id,
+                    label: product.name,
+                  })),
+              ]}
+            />
+            {quickProducts.length > 0 && (
+              <div className="quick-product-choice">
+                <span>Hurtigvalg · GLAVA Proff 34 Plate</span>
+                <div>
+                  {quickProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      className={p?.id === product.id ? "selected" : ""}
+                      aria-label={`Velg GLAVA Proff 34 Plate ${product.thickness} mm`}
+                      aria-pressed={p?.id === product.id}
+                      onClick={() => chooseProduct(product.id)}
+                    >
+                      {product.thickness} mm
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {p && (
+              <p className="chosen-product-info">
+                <Check size={15} />
+                {p.coverage
+                  ? `${format(p.coverage)} m² per ${p.unit}`
+                  : [p.thickness, p.width, p.length]
+                      .filter(Boolean)
+                      .join(" × ") + " mm"}
+                <span>
+                  ·{" "}
+                  {p.verified
+                    ? "Kildekontrollerte felt"
+                    : "Kontroller produktdata"}
+                </span>
+              </p>
+            )}
+          </section>
           <section className="panel">
             <div className="section-heading">
               <h2>
-                <span className="step">1</span>{" "}
+                <span className="step">2</span>{" "}
                 {kind === "flooring"
                   ? "Rom og mål"
                   : kind === "fixings"
@@ -197,6 +331,19 @@ export function Calculator(props: Props) {
                       { value: "width", label: "Langs bredden" },
                     ])}
                 </div>
+                <p className="simple-assumptions">
+                  {v.count || "1"} flate(r)
+                  {kind === "timber" || kind === "insulation"
+                    ? ` · c/c ${v.cc} mm`
+                    : ""}
+                  {kind === "timber"
+                    ? ` · sviller ${v.bottom} bunn + ${v.top} topp · ${v.corners} hjørnetillegg`
+                    : ""}
+                  {kind === "deck"
+                    ? ` · bjelker c/c ${v.joistSpacing} mm · ${v.fixingsPerCross} fester/kryss`
+                    : ""}
+                  . Flere valg kan endres med knappen over.
+                </p>
                 {kind !== "deck" && (
                   <div className="openings">
                     <div className="section-heading minor">
@@ -422,20 +569,9 @@ export function Calculator(props: Props) {
           <section className="panel">
             <div className="section-heading">
               <h2>
-                <span className="step">2</span> Produkt og mengdegrunnlag
+                <span className="step">3</span> Produktdata og reserve
               </h2>
             </div>
-            <Select
-              label="Velg produkt"
-              value={v.productId}
-              onChange={chooseProduct}
-              options={[
-                { value: "", label: "Manuelle produktdata" },
-                ...products
-                  .filter((p) => p.category === kind && p.active)
-                  .map((p) => ({ value: p.id, label: p.name })),
-              ]}
-            />
             {p ? (
               <div className="product-source">
                 <div>
@@ -723,7 +859,11 @@ export function Calculator(props: Props) {
           </section>
         </div>
         <aside className="calculation-results">
-          <section className="result-panel" aria-live="polite">
+          <section
+            ref={resultPanel}
+            className="result-panel"
+            aria-live="polite"
+          >
             <div className="result-eyebrow">
               <span className="live-dot" /> DIN BEREGNING
               <span>Oppdateres direkte</span>

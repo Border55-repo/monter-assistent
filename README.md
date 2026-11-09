@@ -40,6 +40,8 @@ Det følger også med `Start-Assistent.ps1` for å bygge ved behov og starte lok
 
 ## Bruk i kundemøtet
 
+Kalkulatorene starter i enkel visning med produktvalg først. For GLAVA Proff 34 Plate finnes hurtigvalg for dokumenterte tykkelser. Bruk «Vis flere valg og priser» for ekstra forutsetninger og prisfelt. Alle inndata beholdes når visningen endres. På mobil viser snarveien mengden og tar deg rett til resultatet med «Vis resultat».
+
 1. Velg kalkulator og legg inn mål eller kjent areal. Forhåndsutfylte geometrimål er redigerbare regneeksempler.
 2. Velg et dokumentert produkt, eller oppgi produktdata fra pakningen. Ukjent pakningsdekning må fylles ut før pakkeantall vises.
 3. Avklar svinn, avstander og øvrige forutsetninger. Svinn starter på 0 % for å unngå en udokumentert standardanbefaling.
@@ -70,6 +72,8 @@ Alle medfølgende produktopplysninger er kontrollert mot oppgitte kilder 9. nove
 CSV- og Excel-import bruker samme engelske kolonneoverskrifter. Last ned importmal eller eksporter registeret for å få alle kolonnene. Desimalkomma støttes. CSV bruker semikolon ved eksport; kommaformat aksepteres også. Excel-formatet er `.xlsx`, første ark, statiske celleverdier. Gammelt `.xls` og regnearkformler støttes ikke. Maksimal import er 10 MB og 10 000 produkter. En import valideres i sin helhet og må gjennomgås før den brukes. Feil påvirker ikke eksisterende register.
 
 Les [produktkildene](PRODUCT_SOURCES.md), [researchen](RESEARCH.md), [beregningsreglene](CALCULATIONS.md) og [datakontrollen](DATA_VALIDATION.md).
+
+Den etterfølgende gjennomgangen og forenklingene er dokumentert i [BRUKERVENNLIGHET.md](BRUKERVENNLIGHET.md).
 
 ## Tester
 

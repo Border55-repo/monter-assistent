@@ -75,6 +75,9 @@ test("GLAVA 42 m² bruker dokumentert pakningsdekning, lagrer og eksporterer PDF
     page.getByLabel("Dekning per pakke", { exact: true }),
   ).toBeDisabled();
   await expect(page.locator(".primary-result")).toContainText("7");
+  await page
+    .getByRole("button", { name: "Vis flere valg og priser", exact: true })
+    .click();
   await page.getByLabel("Pris per pakke", { exact: true }).fill("100");
   await expect(page.locator(".result-cost")).toContainText("700");
   await page.getByRole("button", { name: "Legg til i materialliste" }).click();
@@ -104,6 +107,93 @@ test("GLAVA 42 m² bruker dokumentert pakningsdekning, lagrer og eksporterer PDF
     .click();
   await page.getByRole("button", { name: "Åpne materialliste" }).click();
   await expect(page.locator(".material-line")).toContainText("7");
+});
+
+test("enkel mobilflyt har produkt først, hurtigvalg og snarvei til materialliste", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await calc(page, "insulation");
+  const productTop = await page
+    .getByLabel("Velg produkt", { exact: true })
+    .evaluate((el) => el.getBoundingClientRect().top);
+  const measureTop = await page
+    .getByLabel("Lengde", { exact: true })
+    .evaluate((el) => el.getBoundingClientRect().top);
+  expect(productTop).toBeLessThan(measureTop);
+  await expect(
+    page.getByLabel("Stenderavstand c/c", { exact: true }),
+  ).toBeHidden();
+  await page
+    .getByRole("button", {
+      name: "Velg GLAVA Proff 34 Plate 100 mm",
+      exact: true,
+    })
+    .click();
+  await page.getByLabel("Registrer mål som").selectOption("area");
+  await page.getByLabel("Areal per flate", { exact: true }).fill("42");
+  await expect(page.locator(".mobile-result-shortcut")).toContainText("7 pk");
+  await page.getByRole("button", { name: "Vis resultat", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Legg til i materialliste" }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: "test-results/mobile-simple-result.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  await expect(
+    page.getByRole("button", {
+      name: "Legg til flere materialer",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("dialoger beholder skrivefokus og godtar desimalkomma ved tastetrykk", async ({
+  page,
+}) => {
+  await go(page, "/projects");
+  await page
+    .getByRole("button", { name: "Nytt prosjekt", exact: true })
+    .click();
+  const title = page.getByLabel("Prosjektnavn", { exact: true });
+  await title.pressSequentially("Enkel garasje", { delay: 15 });
+  await expect(title).toHaveValue("Enkel garasje");
+  await expect(title).toBeFocused();
+  await page
+    .getByRole("dialog", { name: "Opprett prosjekt", exact: true })
+    .getByRole("button", { name: "Opprett prosjekt", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Endre navn", exact: true }).click();
+  const rename = page.getByLabel("Nytt prosjektnavn", { exact: true });
+  await rename.fill("");
+  await rename.pressSequentially("Garasje med isolasjon", { delay: 15 });
+  await expect(rename).toBeFocused();
+  await page.getByRole("button", { name: "Lagre navn", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Garasje med isolasjon", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Legg til linje", exact: true })
+    .click();
+  await page
+    .getByLabel("Produktnavn på linje", { exact: true })
+    .pressSequentially("Tilleggsmateriale", { delay: 10 });
+  const quantity = page.getByLabel("Mengde", { exact: true });
+  await quantity.fill("");
+  await quantity.pressSequentially("2,5", { delay: 20 });
+  await expect(quantity).toHaveValue("2,5");
+  await expect(quantity).toBeFocused();
+  const price = page.getByLabel("Manuell enhetspris", { exact: true });
+  await price.pressSequentially("100,50", { delay: 20 });
+  await expect(price).toHaveValue("100,50");
+  await page
+    .getByRole("button", { name: "Lagre materiallinje", exact: true })
+    .click();
+  await expect(page.locator(".line-qty")).toContainText("2,5");
+  await expect(page.locator(".line-price")).toContainText("251,25");
 });
 test("inndata, favoritter, åpninger og skisse bevares ved navigasjon", async ({
   page,
@@ -231,15 +321,13 @@ test("produktregister oppretter, oppdaterer, importerer og eksporterer", async (
   await page.getByLabel("Vis deaktiverte").check();
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.getByLabel("Søk i produkter").fill("");
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "produkter.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(
-        "name;category;unit;coverage;manufacturer\nImportert isolasjon;insulation;pk;6,84;Testprodusent",
-      ),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "produkter.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(
+      "name;category;unit;coverage;manufacturer\nImportert isolasjon;insulation;pk;6,84;Testprodusent",
+    ),
+  });
   await expect(
     page.getByRole("dialog", { name: "Kontroller importen" }),
   ).toBeVisible();
@@ -247,13 +335,11 @@ test("produktregister oppretter, oppdaterer, importerer og eksporterer", async (
     .getByRole("button", { name: "Importer 1 produkter", exact: true })
     .click();
   await expect(page.locator("tbody tr")).toHaveCount(13);
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "feil.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from("name;category;unit;coverage\nFeil;insulation;pk;-5"),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "feil.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("name;category;unit;coverage\nFeil;insulation;pk;-5"),
+  });
   await expect(page.getByRole("status")).toContainText(
     "Eksisterende produkter er beholdt",
   );
@@ -360,7 +446,9 @@ test("PWA har gyldig manifest, ikoner og fungerer etter offline omlasting", asyn
   context,
   request,
 }) => {
-  const manifest = await (await request.get(basePath + "manifest.webmanifest")).json();
+  const manifest = await (
+    await request.get(basePath + "manifest.webmanifest")
+  ).json();
   expect(manifest.display).toBe("standalone");
   for (const icon of manifest.icons)
     expect((await request.get(icon.src)).status()).toBe(200);

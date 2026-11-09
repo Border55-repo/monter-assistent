@@ -45,11 +45,14 @@ export function Projects({
 }: Props) {
   const [newName, setNewName] = useState(""),
     [newModal, setNewModal] = useState(false),
+    [rename, setRename] = useState<string | null>(null),
     [customer, setCustomer] = useState(false),
     [share, setShare] = useState(false),
     [deleteId, setDeleteId] = useState(""),
     [manual, setManual] = useState<MaterialLine | null>(null),
     [lineError, setLineError] = useState(""),
+    [lineQuantity, setLineQuantity] = useState("1"),
+    [linePrice, setLinePrice] = useState(""),
     [pdfBusy, setPdfBusy] = useState(false);
   const selected = projects.find((p) => p.id === selectedId);
   const update = (p: Project) =>
@@ -123,6 +126,10 @@ export function Projects({
   };
   const editLine = (line?: MaterialLine) => {
     setLineError("");
+    setLineQuantity(String(line?.quantity ?? 1).replace(".", ","));
+    setLinePrice(
+      line?.price === undefined ? "" : String(line.price).replace(".", ","),
+    );
     setManual(
       line
         ? { ...line }
@@ -140,15 +147,15 @@ export function Projects({
   };
   const saveLine = () => {
     if (!manual || !selected) return;
+    const quantity = lineQuantity.trim() ? numberFrom(lineQuantity) : NaN;
+    const price = linePrice.trim() ? numberFrom(linePrice) : undefined;
     if (
       !manual.name.trim() ||
-      !Number.isFinite(manual.quantity) ||
-      manual.quantity <= 0 ||
-      manual.quantity > 1e9 ||
-      (manual.price !== undefined &&
-        (!Number.isFinite(manual.price) ||
-          manual.price < 0 ||
-          manual.price > 1e9))
+      !Number.isFinite(quantity) ||
+      quantity <= 0 ||
+      quantity > 1e9 ||
+      (price !== undefined &&
+        (!Number.isFinite(price) || price < 0 || price > 1e9))
     ) {
       setLineError(
         "Oppgi navn, positiv mengde og en gyldig pris eller la prisfeltet stå tomt.",
@@ -157,9 +164,11 @@ export function Projects({
     }
     const line = {
       ...manual,
+      quantity,
+      price,
       note: `${manual.note.replace(/\s*Manuelt justert\.$/, "")} Manuelt justert.`,
       priceSource:
-        manual.price === undefined ? "Ikke registrert" : "Manuelt registrert",
+        price === undefined ? "Ikke registrert" : "Manuelt registrert",
     };
     update({
       ...selected,
@@ -231,14 +240,7 @@ export function Projects({
                 </button>
                 <button
                   className="secondary"
-                  onClick={() => {
-                    const name = window.prompt(
-                      "Prosjektnavn – uten personopplysninger",
-                      selected.name,
-                    );
-                    if (name?.trim())
-                      update({ ...selected, name: name.trim() });
-                  }}
+                  onClick={() => setRename(selected.name)}
                 >
                   <Pencil size={16} /> Endre navn
                 </button>
@@ -403,6 +405,14 @@ export function Projects({
               <section className="panel project-summary">
                 <div className="eyebrow">PROSJEKTOVERSIKT</div>
                 <h2>{selected.lines.length} materiallinjer</h2>
+                {!customer && (
+                  <button
+                    className="primary full no-print"
+                    onClick={() => onCalculate()}
+                  >
+                    <Plus size={17} /> Legg til flere materialer
+                  </button>
+                )}
                 <div className="summary-total">
                   <span>Sum registrerte priser</span>
                   <strong>{money(projectTotal(selected.lines))}</strong>
@@ -515,6 +525,44 @@ export function Projects({
           </div>
         </>
       )}
+      {rename !== null && selected && (
+        <Modal title="Endre prosjektnavn" onClose={() => setRename(null)}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (rename.trim()) {
+                update({ ...selected, name: rename.trim() });
+                setRename(null);
+                notify("Prosjektnavnet er oppdatert.");
+              }
+            }}
+          >
+            <Field
+              label="Nytt prosjektnavn"
+              value={rename}
+              onChange={setRename}
+              text
+              hint="Bruk et beskrivende navn uten personopplysninger."
+            />
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setRename(null)}
+              >
+                Avbryt
+              </button>
+              <button
+                type="submit"
+                className="primary"
+                disabled={!rename.trim()}
+              >
+                Lagre navn
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
       {newModal && (
         <Modal title="Opprett prosjekt" onClose={() => setNewModal(false)}>
           <form
@@ -604,15 +652,8 @@ export function Projects({
               />
               <Field
                 label="Mengde"
-                value={
-                  Number.isNaN(manual.quantity) ? "" : String(manual.quantity)
-                }
-                onChange={(s) =>
-                  setManual({
-                    ...manual,
-                    quantity: s.trim() ? numberFrom(s) : NaN,
-                  })
-                }
+                value={lineQuantity}
+                onChange={setLineQuantity}
               />
               <Field
                 label="Enhet"
@@ -623,13 +664,8 @@ export function Projects({
               <Field
                 label="Manuell enhetspris"
                 unit="kr"
-                value={manual.price === undefined ? "" : String(manual.price)}
-                onChange={(s) =>
-                  setManual({
-                    ...manual,
-                    price: s.trim() ? numberFrom(s) : undefined,
-                  })
-                }
+                value={linePrice}
+                onChange={setLinePrice}
               />
             </div>
             {lineError && (
