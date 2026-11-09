@@ -1,0 +1,425 @@
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { readFile, writeFile } from "node:fs/promises";
+const basePath = process.env.VITE_BASE_PATH || "/";
+const go = async (page: Page, hash = "/") => {
+  await page.goto(basePath + "#" + hash);
+  await expect(
+    page.getByRole("heading", { name: "Montér Assistent", exact: true }),
+  ).toHaveCount(0);
+};
+const calc = async (page: Page, kind: string) => {
+  await go(page, "/calc/" + kind);
+  await expect(
+    page.getByText("MATERIALBEREGNING", { exact: true }),
+  ).toBeVisible();
+};
+const selectGlava = async (page: Page) => {
+  await page
+    .getByLabel("Velg produkt", { exact: true })
+    .selectOption("glava-50673624");
+};
+test("arbeidsflate, responsiv mobilvisning og mørk modus", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await go(page);
+  await expect(
+    page.getByRole("heading", { name: "Klar for neste kunde." }),
+  ).toBeVisible();
+  await expect(page.locator(".home-calcs .calc-card")).toHaveCount(8);
+  await expect(page.getByText("Klar uten nett", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: "test-results/desktop-home.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Bytt til mørk modus" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({
+    path: "test-results/desktop-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Bytt til lys modus" }).click();
+  await page.screenshot({
+    path: "test-results/mobile-home.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expect(
+    page.getByRole("navigation", { name: "Mobilmeny" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Åpne navigasjon" }).click();
+  await expect(
+    page.getByRole("navigation", { name: "Hovedmeny" }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+test("GLAVA 42 m² bruker dokumentert pakningsdekning, lagrer og eksporterer PDF", async ({
+  page,
+}) => {
+  await calc(page, "insulation");
+  await selectGlava(page);
+  await page.getByLabel("Registrer mål som").selectOption("area");
+  await page.getByLabel("Areal per flate", { exact: true }).fill("42");
+  await expect(
+    page.getByLabel("Dekning per pakke", { exact: true }),
+  ).toHaveValue("6.84");
+  await expect(
+    page.getByLabel("Dekning per pakke", { exact: true }),
+  ).toBeDisabled();
+  await expect(page.locator(".primary-result")).toContainText("7");
+  await page.getByLabel("Pris per pakke", { exact: true }).fill("100");
+  await expect(page.locator(".result-cost")).toContainText("700");
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Materialliste", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".material-line")).toHaveCount(1);
+  await expect(page.locator(".material-line")).toContainText(
+    "GLAVA Proff 34 Plate 100 mm",
+  );
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Eksporter PDF" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/\.pdf$/);
+  const content = await readFile((await file.path())!);
+  expect(content.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(content.length).toBeGreaterThan(3000);
+  await page.screenshot({
+    path: "test-results/project-materials.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.reload();
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "Prosjekter", exact: false })
+    .click();
+  await page.getByRole("button", { name: "Åpne materialliste" }).click();
+  await expect(page.locator(".material-line")).toContainText("7");
+});
+test("inndata, favoritter, åpninger og skisse bevares ved navigasjon", async ({
+  page,
+}) => {
+  await calc(page, "insulation");
+  await selectGlava(page);
+  await page.getByLabel("Lengde", { exact: true }).fill("10");
+  await page.getByRole("button", { name: "Legg til", exact: true }).click();
+  await page.getByLabel("Fra venstre", { exact: true }).fill("1");
+  await expect(page.getByRole("img", { name: /Flateskisse/ })).toBeVisible();
+  await page.getByRole("button", { name: "Fjern favoritt" }).click();
+  await page
+    .getByRole("button", { name: "Alle kalkulatorer", exact: true })
+    .click();
+  await page
+    .locator(".calculator-grid")
+    .getByRole("button", { name: /GLAVA & isolasjon/ })
+    .click();
+  await expect(page.getByLabel("Lengde", { exact: true })).toHaveValue("10");
+  await expect(page.getByLabel("Fra venstre", { exact: true })).toHaveValue(
+    "1",
+  );
+  await expect(
+    page.getByRole("button", { name: "Legg til favoritt" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Lengde", { exact: true })).toHaveValue("10");
+  await page.getByLabel("Bredde", { exact: true }).fill("100");
+  await expect(page.locator(".result-incomplete")).toContainText("Åpninger");
+  await expect(
+    page.getByRole("button", { name: "Legg til i materialliste" }),
+  ).toHaveCount(0);
+});
+test("redigering erstatter eksisterende beregning uten doble materiallinjer", async ({
+  page,
+}) => {
+  await calc(page, "timber");
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  await page.getByRole("button", { name: /Rediger beregning Trelast/ }).click();
+  await page.getByLabel("Lengde", { exact: true }).fill("10");
+  await page.getByRole("button", { name: "Oppdater beregning" }).click();
+  await expect(page.locator(".saved-calculation")).toHaveCount(1);
+  await expect(page.locator(".material-line")).toHaveCount(1);
+  await expect(page.locator(".saved-calculation")).toContainText("10 × 2,4");
+  await page.getByRole("button", { name: /Rediger materiallinje/ }).click();
+  await page.getByLabel("Mengde", { exact: true }).fill("25");
+  await page.getByLabel("Manuell enhetspris").fill("100");
+  await page.getByRole("button", { name: "Lagre materiallinje" }).click();
+  await expect(page.locator(".line-qty")).toContainText("25");
+  await expect(page.locator(".line-price")).toContainText(
+    "2 500".replace(" ", "\u00a0"),
+  );
+  await page.getByRole("button", { name: "Kopier prosjekt" }).click();
+  await expect(page.getByRole("heading", { name: /– kopi/ })).toBeVisible();
+  await expect(page.locator(".material-line")).toHaveCount(1);
+  await page.getByRole("button", { name: "Kundevisning", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /Rediger materiallinje/ }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Eksporter PDF" }),
+  ).toBeVisible();
+});
+test("flere rom, terrasse og øvrige kalkulatorer gir resultater", async ({
+  page,
+}) => {
+  await calc(page, "flooring");
+  await page.getByLabel("Dekning per gulvpakke").fill("2,048");
+  await page.getByRole("button", { name: "Legg til rom" }).click();
+  await page.getByLabel("Romlengde", { exact: true }).nth(1).fill("3");
+  await page.getByLabel("Rombredde", { exact: true }).nth(1).fill("3");
+  await expect(page.locator(".result-metrics")).toContainText("29");
+  await calc(page, "deck");
+  await expect(page.locator(".primary-result")).toContainText("24");
+  await expect(page.locator(".result-metrics")).toContainText("726");
+  await page.getByLabel("Leggeretning").selectOption("width");
+  await expect(page.locator(".result-metrics")).toContainText("49");
+  await calc(page, "sheets");
+  await page
+    .getByLabel("Velg produkt", { exact: true })
+    .selectOption("norgips-10397701");
+  await expect(page.getByLabel("Nominell platelengde")).toBeDisabled();
+  await expect(page.locator(".primary-result")).toContainText("7");
+  await calc(page, "cladding");
+  await page.getByLabel("Faktisk dekkbredde", { exact: true }).fill("125");
+  await expect(page.locator(".primary-result")).toContainText("32");
+  await page.getByLabel("Kledningssystem").selectOption("overunder");
+  await expect(page.locator(".primary-result")).toContainText("17");
+  await calc(page, "fixings");
+  await page
+    .getByLabel("Velg produkt", { exact: true })
+    .selectOption("essve-43845037");
+  await page.getByLabel("Areal", { exact: true }).fill("28");
+  await page.getByLabel("Forbruk per m²").fill("20");
+  await page
+    .getByLabel("Kilde / innfestingsmønster")
+    .fill("Oppgitt prosjektforbruk fra kontrollert system");
+  await expect(page.locator(".primary-result")).toContainText("3");
+});
+test("produktregister oppretter, oppdaterer, importerer og eksporterer", async ({
+  page,
+}) => {
+  await go(page, "/products");
+  await expect(page.locator("tbody tr")).toHaveCount(11);
+  await page.getByRole("button", { name: "Nytt produkt" }).click();
+  await page
+    .getByLabel("Produktnavn", { exact: true })
+    .fill("Lokalt testprodukt");
+  await page.getByLabel("Produsent", { exact: true }).fill("Testprodusent");
+  await page.getByLabel("Dekning per salgsenhet").fill("3,5");
+  await page
+    .getByRole("button", { name: "Lagre produkt", exact: true })
+    .click();
+  await expect(page.locator("tbody tr")).toHaveCount(12);
+  await page.getByLabel("Søk i produkter").fill("Lokalt testprodukt");
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "Rediger Lokalt testprodukt", exact: true })
+    .click();
+  await page.getByLabel("Produktet er aktivt").uncheck();
+  await page
+    .getByRole("button", { name: "Lagre produkt", exact: true })
+    .click();
+  await expect(page.locator("tbody tr")).toHaveCount(0);
+  await page.getByLabel("Vis deaktiverte").check();
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await page.getByLabel("Søk i produkter").fill("");
+  await page
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "produkter.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(
+        "name;category;unit;coverage;manufacturer\nImportert isolasjon;insulation;pk;6,84;Testprodusent",
+      ),
+    });
+  await expect(
+    page.getByRole("dialog", { name: "Kontroller importen" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Importer 1 produkter", exact: true })
+    .click();
+  await expect(page.locator("tbody tr")).toHaveCount(13);
+  await page
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "feil.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("name;category;unit;coverage\nFeil;insulation;pk;-5"),
+    });
+  await expect(page.getByRole("status")).toContainText(
+    "Eksisterende produkter er beholdt",
+  );
+  await expect(page.locator("tbody tr")).toHaveCount(13);
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Eksporter", exact: true }).click();
+  const f = await download;
+  const text = await readFile((await f.path())!, "utf8");
+  expect(text).toContain("Importert isolasjon");
+  expect(text).toContain("50673624");
+});
+test("fagguide, produktkilder og hurtigverktøy er tilgjengelige", async ({
+  page,
+}) => {
+  await go(page, "/assistant");
+  await page.getByLabel("Søk i produktassistent").fill("OSB");
+  await page.getByRole("button", { name: /OSB eller MDF/ }).click();
+  await expect(page.getByRole("dialog")).toContainText("Begrensninger");
+  await expect(page.getByRole("link", { name: /EGGER/ })).toHaveAttribute(
+    "href",
+    /egger\.com/,
+  );
+  await page.getByRole("button", { name: "Lukk dialog" }).click();
+  await go(page, "/products");
+  await page.getByLabel("Søk i produkter").fill("50673624");
+  await page
+    .locator(".table-product")
+    .filter({ hasText: "GLAVA Proff 34 Plate 100 mm" })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("101186758");
+  await expect(page.getByRole("dialog")).toContainText("Mangler:");
+  await expect(
+    page.getByRole("link", { name: "Produktkilde" }),
+  ).toHaveAttribute(
+    "href",
+    "https://www.glava.no/produkter/glava-proff-34-plate",
+  );
+  await go(page, "/quick");
+  await expect(page.locator(".primary-result")).toContainText("7");
+  await page
+    .getByRole("button", { name: "Volum og liter", exact: true })
+    .click();
+  await expect(page.locator(".quick-result")).toContainText("0,02258");
+});
+test("mobilkalkulator har lesbare felter og ingen horisontal overflyt", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await calc(page, "insulation");
+  await selectGlava(page);
+  await page.getByRole("button", { name: "Legg til", exact: true }).click();
+  await page.getByLabel("Fra venstre").fill("1");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/mobile-calculator.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/mobile-project.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+});
+test("sikkerhetskopi kan lastes ned og gjenopprettes med prosjekter", async ({
+  page,
+}) => {
+  await calc(page, "timber");
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  await go(page, "/settings");
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Last ned sikkerhetskopi", exact: true })
+    .click();
+  const f = await download;
+  const file = (await f.path())!;
+  const data = JSON.parse(await readFile(file, "utf8"));
+  expect(data.schemaVersion).toBe(1);
+  expect(data.projects).toHaveLength(1);
+  await page.locator("input[type=file]").setInputFiles(file);
+  await expect(
+    page.getByRole("dialog", { name: "Gjenopprett sikkerhetskopi?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Erstatt med sikkerhetskopien" })
+    .click();
+  await go(page, "/projects");
+  await expect(
+    page.getByRole("button", { name: "Åpne materialliste" }),
+  ).toHaveCount(1);
+});
+test("PWA har gyldig manifest, ikoner og fungerer etter offline omlasting", async ({
+  page,
+  context,
+  request,
+}) => {
+  const manifest = await (await request.get(basePath + "manifest.webmanifest")).json();
+  expect(manifest.display).toBe("standalone");
+  for (const icon of manifest.icons)
+    expect((await request.get(icon.src)).status()).toBe(200);
+  await calc(page, "insulation");
+  await selectGlava(page);
+  await page.getByLabel("Lengde", { exact: true }).fill("12");
+  await expect(page.getByText("Klar uten nett", { exact: true })).toBeVisible();
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller)
+      await new Promise((resolve) =>
+        navigator.serviceWorker.addEventListener("controllerchange", resolve, {
+          once: true,
+        }),
+      );
+  });
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByLabel("Lengde", { exact: true })).toHaveValue("12");
+  await expect(page.getByLabel("Velg produkt", { exact: true })).toHaveValue(
+    "glava-50673624",
+  );
+  await page.getByLabel("Lengde", { exact: true }).fill("10");
+  await expect(page.locator(".primary-result")).toContainText("4");
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  await expect(page.locator(".material-line")).toHaveCount(1);
+  const dl = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Eksporter PDF" }).click();
+  expect((await dl).suggestedFilename()).toMatch(/pdf$/);
+  await context.setOffline(false);
+});
+test("en faktisk serviceworkeroppdatering bevarer prosjekter og produktdata", async ({
+  page,
+}) => {
+  await calc(page, "timber");
+  await page.getByRole("button", { name: "Legg til i materialliste" }).click();
+  await expect(page.getByText("Klar uten nett", { exact: true })).toBeVisible();
+  const path = "dist/sw.js",
+    original = await readFile(path, "utf8");
+  try {
+    await writeFile(path, original + "\n// E2E version " + Date.now());
+    await page.evaluate(async () => {
+      const r = await navigator.serviceWorker.getRegistration();
+      await r!.update();
+    });
+    await expect(
+      page.getByRole("button", { name: "Oppdater app", exact: true }),
+    ).toBeVisible();
+    await Promise.all([
+      page.waitForEvent("load"),
+      page.getByRole("button", { name: "Oppdater app", exact: true }).click(),
+    ]);
+    await go(page, "/projects");
+    await expect(
+      page.getByRole("button", { name: "Åpne materialliste" }),
+    ).toHaveCount(1);
+    await go(page, "/products");
+    await expect(page.locator("tbody tr")).toHaveCount(11);
+  } finally {
+    await writeFile(path, original);
+  }
+});
