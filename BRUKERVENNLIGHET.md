@@ -35,3 +35,9 @@ Etter brukerens nye bestilling er samlet søk, lokale vareplasseringer, prosjekt
 Flere ulike vegger støttes med egne mål og åpninger. Produktet velges fortsatt først, og samme produkt gjelder alle veggene. Publiserte nettpriser vises med kilde, enhet og alder; de tas bare inn i en beregning ved et eksplisitt knappetrykk. Manuelle priser og eksisterende prosjekter beholdes.
 
 Mobilkontrollen fant at den ekstra søkeknappen gjorde toppfeltet for bredt. Toppfeltet er rettet og kontrollert ved 390 px bredde. Testene skriver faktiske tastetrykk, gjenåpner data og kontrollerer at hele arbeidsnotatet bevares etter lagringsbekreftelsen. Dette er fortsatt en teknisk gjennomgang; ingen brukertest med butikkansatte eller dokumentert tidsbesparelse er gjennomført.
+
+## Synlige trelastvalg – 10.11.2026
+
+Etter tilbakemelding om manglende produktvalg ble det kontrollert at fire trelastvarer faktisk lå i den offentlige rullegardinlisten. For å gjøre dem lettere å oppdage vises aktive trelastvarer nå også som tydelige knapper med dimensjon, faktisk lengde, produktnavn og valgt-markering. Ingen variant velges automatisk. Tomt lokalt register forklares uttrykkelig.
+
+Ny mobiltest starter med et eldre register uten trelastvarer, kontrollerer katalogoppgraderingen, ser fire vareknapper, velger mellom 4,8 og 4,2 m, og kontrollerer låste produktmål og bevart valg etter omlasting. Alle 19 nettlesertester består. Skjermbilde: `test-results/timber-products.png`.

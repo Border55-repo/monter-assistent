@@ -6,7 +6,7 @@ Produksjonsbygget er kontrollert lokalt på Windows med Node.js 24 og Microsoft 
 |---|---|
 | `npm test` | 85 tester bestått, 4 testfiler |
 | `npm run build` | TypeScript og Vite bestått; PWA-cache generert |
-| `npm run test:e2e` | 18 nettlesertester bestått, med GitHub Pages-undermappe |
+| `npm run test:e2e` | 19 nettlesertester bestått, med GitHub Pages-undermappe |
 | `npm audit --json` | 0 rapporterte sårbarheter i den installerte avhengighetslisten |
 | Visuell kontroll | Arbeidsflate i lys/mørk modus, mobil, kalkulator og materialliste |
 
@@ -59,3 +59,5 @@ Samlet resultat: 103 tester består (85 enhets-/integrasjonstester og 18 nettles
 - E2E kontrollerer faktiske tastetrykk i arbeidsnotat og laster straks siden på nytt etter lagringsbekreftelsen. Mobilens horisontale overflyt etter ny søkeknapp ble funnet og rettet.
 
 Skjermbilder: `test-results/customer-help.png`, `mobile-search.png`, `multiple-walls.png`, og eksisterende mobil-/arbeidsflatebilder. Automatiske fullsidebilder av en scrollet side kan flytte faste sideelementer i skjermbildet; dette er kontrollert separat fra mobilens faktiske bredde.
+
+Tillegg: synlige trelastvalg kontrolleres også mot en eldre IndexedDB-katalog, faktisk variantbytte, låste produktmål og gjenåpning på mobil. 19/19 nettlesertester består etter denne endringen; de 85 motor-/datatestene kjøres fortsatt av publiseringsworkflowen.

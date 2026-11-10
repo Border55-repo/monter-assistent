@@ -148,6 +148,9 @@ export function Calculator(props: Props) {
           )
           .sort((a, b) => a.thickness! - b.thickness!)
       : [];
+  const timberProducts = kind === "timber"
+    ? products.filter((product) => product.active && product.category === "timber")
+    : [];
   const chooseProduct = (id: string) => {
     const chosen = products.find((p) => p.id === id);
     onChange({
@@ -234,6 +237,13 @@ export function Calculator(props: Props) {
                 <span className="step">1</span> Velg produkt
               </h2>
             </div>
+            {kind === "timber" && (
+              <p className="timber-choice-hint">
+                {timberProducts.length
+                  ? `${timberProducts.length} trelastvarer tilgjengelig. Trykk på en vare under, eller velg fra listen.`
+                  : "Ingen aktive trelastvarer i det lokale registeret. Kontroller Produktregister, eller bruk manuelle produktdata."}
+              </p>
+            )}
             <Select
               label="Velg produkt"
               value={v.productId}
@@ -250,6 +260,26 @@ export function Calculator(props: Props) {
                   })),
               ]}
             />
+            {timberProducts.length > 0 && (
+              <div className="timber-product-choices" role="group" aria-label="Trelastvarer">
+                {timberProducts.map((product) => (
+                  <button
+                    key={product.id}
+                    className={p?.id === product.id ? "selected" : ""}
+                    aria-label={`Velg ${product.name}`}
+                    aria-pressed={p?.id === product.id}
+                    onClick={() => chooseProduct(product.id)}
+                  >
+                    <strong>{product.thickness && product.width
+                      ? `${format(product.thickness)} × ${format(product.width)} mm`
+                      : product.name}</strong>
+                    {product.length && <span>{format(product.length / 1000)} m</span>}
+                    <small>{product.name}</small>
+                    {p?.id === product.id && <span className="timber-selected"><Check size={14} /> Valgt</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             {quickProducts.length > 0 && (
               <div className="quick-product-choice">
                 <span>Hurtigvalg · GLAVA Proff 34 Plate</span>

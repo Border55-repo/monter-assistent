@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
+.timber-choice-hint {color:var(--muted);font-size:12px;line-height:1.6;margin:0 0 16px}
+.timber-product-choices {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.timber-product-choices button {display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);min-width:0;min-height:110px}
+.timber-product-choices button:hover,.timber-product-choices button.selected {border-color:var(--green);background:var(--green-soft)}
+.timber-product-choices strong {font-size:15px}
+.timber-product-choices small {font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.timber-selected {display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:600}
+
 .home-task-bar {
   display: flex;
   gap: 12px;

@@ -21,6 +21,50 @@ const selectGlava = async (page: Page) => {
     .selectOption("glava-50673624");
 };
 
+test("trelastvarene er synlige på mobil også etter oppgradering av eldre register", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await go(page);
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("monter-assistent", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction("app", "readwrite");
+    const store = transaction.objectStore("app");
+    const request = store.get("data");
+    request.onsuccess = () => {
+      const data = request.result;
+      data.products = data.products.filter((p: { category: string }) => p.category !== "timber");
+      data.catalogRevision = 1;
+      store.put(data, "data");
+    };
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+  });
+  await calc(page, "timber");
+  const choices = page.getByRole("group", { name: "Trelastvarer", exact: true });
+  await expect(choices.getByRole("button")).toHaveCount(4);
+  await expect(page.getByLabel("Velg produkt", { exact: true }).locator("option")).toHaveCount(5);
+  const first = choices.getByRole("button", { name: "Velg Lida Timber konstruksjonsvirke C24 gran 48 × 98 × 4800 mm", exact: true });
+  await expect(first).toBeVisible();
+  await first.click();
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Tykkelse virke", { exact: true })).toHaveValue("48");
+  await expect(page.getByLabel("Dybde virke", { exact: true })).toHaveValue("98");
+  await expect(page.getByLabel("Handelslengde", { exact: true })).toHaveValue("4.8");
+  await expect(page.getByLabel("Handelslengde", { exact: true })).toBeDisabled();
+  await choices.getByRole("button", { name: "Velg Lida Timber konstruksjonsvirke C24 gran 48 × 98 × 4200 mm", exact: true }).click();
+  await expect(page.getByLabel("Handelslengde", { exact: true })).toHaveValue("4.2");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator(".product-choice").screenshot({ path: "test-results/timber-products.png", animations: "disabled" });
+  await page.reload();
+  await expect(page.getByLabel("Velg produkt", { exact: true })).toHaveValue("monter-101131438");
+});
+
 test("samlet søk finner varenummer og lagret vareplassering på mobil", async ({
   page,
 }) => {
