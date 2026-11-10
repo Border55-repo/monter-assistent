@@ -26,6 +26,8 @@ Enhetstester for alle motorer, grenseverdier, import, lagring og eksport; E2E fo
 
 ## Research ved videreutvikling
 
+PWA-oppdatering: forhåndslagring må hente filer med `Request(..., {cache: "reload"})`, ellers kan gammel HTML fra HTTP-cache bli lagret i en ny offlinecache. Registrering bruker `updateViaCache: "none"`. Nettlesertesten endrer faktisk HTML og kontrollerer nytt appskall med ti minutters HTTP-cache i preview. Ikke fjern denne kontrollen eller nullstill brukerens IndexedDB for å løse cachefeil.
+
 Utvidelse 10.11.2026: 27 medfølgende produktvarianter, 16 nye dokumentert i `research/`. Katalogrevisjon 2 legger kun til manglende varianter, og bevarer brukerens poster. Vareplasseringer ligger separat i `AppData.locations`, ikke i verifiserte produktdata. Prosjektstatus og interne arbeidsnotater må ikke fremstilles som delt mellom ansatte. Kundehjelpens seks oppgaver har kilder og legger aldri til varer automatisk. Samlet søk inkluderer kundeord og lokalt innhold.
 
 Flere vegger: se tillegget i `CALCULATIONS.md`. Arealbaserte motorer summerer nettoareal før avrunding; trelast beregnes og avrundes separat per vegg. Samme produkt og konstruksjonsvalg gjelder alle veggene. Behold veggene i backup, prosjekt og eksport.

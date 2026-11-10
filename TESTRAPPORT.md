@@ -61,3 +61,5 @@ Samlet resultat: 103 tester består (85 enhets-/integrasjonstester og 18 nettles
 Skjermbilder: `test-results/customer-help.png`, `mobile-search.png`, `multiple-walls.png`, og eksisterende mobil-/arbeidsflatebilder. Automatiske fullsidebilder av en scrollet side kan flytte faste sideelementer i skjermbildet; dette er kontrollert separat fra mobilens faktiske bredde.
 
 Tillegg: synlige trelastvalg kontrolleres også mot en eldre IndexedDB-katalog, faktisk variantbytte, låste produktmål og gjenåpning på mobil. 19/19 nettlesertester består etter denne endringen; de 85 motor-/datatestene kjøres fortsatt av publiseringsworkflowen.
+
+De offentlige skjermbildene viste også et eget oppdateringsproblem: en ny serviceworker kunne forhåndslagre gammel HTML fra nettleserens HTTP-cache. Forhåndslagring bruker nå `Request` med `cache: reload`, og registrering bruker `updateViaCache: none`. Offlinecache og IndexedDB beholdes. Nettlesertesten endrer faktisk HTML under oppdateringen og kontrollerer at det nye appskallet vises, med ti minutters HTTP-cache som på statisk hosting. Alle 19 tester består med disse cachebetingelsene.

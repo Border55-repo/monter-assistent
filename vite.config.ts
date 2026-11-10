@@ -6,4 +6,5 @@ export default defineConfig({
   plugins: [react(), tailwind()],
   test: { include: ["tests/**/*.test.ts"], environment: "node" },
   build: { chunkSizeWarningLimit: 1100 },
+  preview: { headers: { "Cache-Control": "public, max-age=600" } },
 });

@@ -41,3 +41,5 @@ Mobilkontrollen fant at den ekstra søkeknappen gjorde toppfeltet for bredt. Top
 Etter tilbakemelding om manglende produktvalg ble det kontrollert at fire trelastvarer faktisk lå i den offentlige rullegardinlisten. For å gjøre dem lettere å oppdage vises aktive trelastvarer nå også som tydelige knapper med dimensjon, faktisk lengde, produktnavn og valgt-markering. Ingen variant velges automatisk. Tomt lokalt register forklares uttrykkelig.
 
 Ny mobiltest starter med et eldre register uten trelastvarer, kontrollerer katalogoppgraderingen, ser fire vareknapper, velger mellom 4,8 og 4,2 m, og kontrollerer låste produktmål og bevart valg etter omlasting. Alle 19 nettlesertester består. Skjermbilde: `test-results/timber-products.png`.
+
+Sluttkontrollen på den offentlige siden avdekket at mellomlagret HTML kunne holde gamle kontroller synlige etter oppdatering. Forhåndslagringen henter nå ferske filer uten å gjenbruke HTTP-cache. En faktisk HTML-endring under serviceworkeroppdatering er tatt inn i nettlesertesten, og preview simulerer ti minutters cache.

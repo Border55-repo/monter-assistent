@@ -736,8 +736,11 @@ test("en faktisk serviceworkeroppdatering bevarer prosjekter og produktdata", as
   await page.getByRole("button", { name: "Legg til i materialliste" }).click();
   await expect(page.getByText("Klar uten nett", { exact: true })).toBeVisible();
   const path = "dist/sw.js",
-    original = await readFile(path, "utf8");
+    original = await readFile(path, "utf8"),
+    htmlPath = "dist/index.html",
+    originalHtml = await readFile(htmlPath, "utf8");
   try {
+    await writeFile(htmlPath, originalHtml.replace(/<title>.*?<\/title>/, "<title>Oppdatert appskall</title>"));
     await writeFile(path, original + "\n// E2E version " + Date.now());
     await page.evaluate(async () => {
       const r = await navigator.serviceWorker.getRegistration();
@@ -750,6 +753,7 @@ test("en faktisk serviceworkeroppdatering bevarer prosjekter og produktdata", as
       page.waitForEvent("load"),
       page.getByRole("button", { name: "Oppdater app", exact: true }).click(),
     ]);
+    await expect(page).toHaveTitle("Oppdatert appskall");
     await go(page, "/projects");
     await expect(
       page.getByRole("button", { name: "Åpne materialliste" }),
@@ -758,5 +762,6 @@ test("en faktisk serviceworkeroppdatering bevarer prosjekter og produktdata", as
     await expect(page.locator("tbody tr")).toHaveCount(seedProducts.length);
   } finally {
     await writeFile(path, original);
+    await writeFile(htmlPath, originalHtml);
   }
 });

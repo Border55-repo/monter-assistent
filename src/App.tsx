@@ -204,6 +204,7 @@ export default function App() {
     void navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`, {
         scope: import.meta.env.BASE_URL,
+        updateViaCache: "none",
       })
       .then((reg) => {
         if (reg.waiting) setWaitingWorker(reg.waiting);
