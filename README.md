@@ -60,14 +60,20 @@ Ved redigering av en lagret beregning erstattes dens materiallinjer. Manuelle en
 - **Gulv:** flere rom, gulvpakker, brukerens svinn, underlag, valgfri fuktsperre og listelengder.
 - **Festemidler:** dokumentert forbruk per m² eller antall kryss × fester, samt pakkeavrunding. Kilde/mønster er påkrevd.
 - **Produktassistent:** søkbare, lokalt tilgjengelige fagguider med produsentlenker.
-- **Register:** 11 reelle produktvarianter med kilde, identifikatorer og kontrollstatus for spesifiserte felt. Ingen medfølgende priser eller lagerstatus.
+- **Register:** 27 reelle produktvarianter med kilde, identifikatorer og kontrollstatus for spesifiserte felt. Et avgrenset utvalg i alle sju kategorier, ingen lagerintegrasjon.
+- **Kundehjelp:** seks kundeoppgaver med avklaringsspørsmål, huskelister, kilder og snarveier til kalkulatorer/fagguider.
+- **Samlet søk:** produkter, varenummer, lokale vareplasseringer, kundeord, kalkulatorer, fagguider og prosjekter.
+- **Vareplassering:** område, reol og fag/hylle registreres separat lokalt, med kontrolldato. Tomme til butikken fyller dem ut.
+- **Prosjektstatus:** under beregning, må avklares, klar til plukk og ferdig, med korte arbeidsnotater og filtrering.
+- **Flere vegger:** egne lengder, høyder og åpninger for isolasjon, stenderverk, plater og kledning. Felles produktvalg.
+- **Prisbot:** publisert nettpris for 23 koblede varianter kontrolleres normalt hver sjette time. Kilde, enhet og tidspunkt vises. Se [PRISBOT.md](PRISBOT.md).
 - **Hurtigverktøy:** mm/cm/m, areal/lm, m³/liter, materialantall, pakker, svinn og prisomregning.
 - **Lagring:** IndexedDB, sikkerhetskopi/gjenoppretting, favoritter og bevarte kalkulatorinndata.
 - **PWA:** manifest, 192/512-ikoner, offlinecache av alle byggfiler, synlig tilkoblingsstatus og oppdatering uten sletting av brukerdata.
 
 ## Produktdata
 
-Alle medfølgende produktopplysninger er kontrollert mot oppgitte kilder 9. november 2026. Status gjelder bare de spesifiserte feltene; ukjente verdier er tomme. 90 dager er en intern påminnelsesgrense for ny kontroll, ikke produsentens gyldighetsfrist. Fravær av oppdateringsintegrasjon betyr at automatisk kildekontroll ikke utføres.
+Medfølgende produktopplysninger er kontrollert mot oppgitte kilder 9.–10. november 2026. Status gjelder bare de spesifiserte feltene; ukjente verdier er tomme. 90 dager er en intern påminnelsesgrense for ny kontroll, ikke produsentens gyldighetsfrist. Prisboten kontrollerer publisert nettpris, men utfører ikke automatisk ny kontroll av tekniske produktdata.
 
 CSV- og Excel-import bruker samme engelske kolonneoverskrifter. Last ned importmal eller eksporter registeret for å få alle kolonnene. Desimalkomma støttes. CSV bruker semikolon ved eksport; kommaformat aksepteres også. Excel-formatet er `.xlsx`, første ark, statiske celleverdier. Gammelt `.xls` og regnearkformler støttes ikke. Maksimal import er 10 MB og 10 000 produkter. En import valideres i sin helhet og må gjennomgås før den brukes. Feil påvirker ikke eksisterende register.
 
@@ -97,4 +103,4 @@ Data finnes bare i den aktuelle nettleserprofilen. Bruk sikkerhetskopi for overf
 
 Mengdeberegningene dokumenterer ikke styrke, brann, lyd, U-verdi eller fuktsikkerhet. Kappforslag er ikke konstruksjonsplaner. Eksterne dokumenter/bilder er ikke offlinegarantert. PDF bruker et innebygd tegnsett som støtter norsk, men ikke alle verdens skriftspråk. Gjeldende priser, mva-status og lager i Montér Lillestrøm må kontrolleres separat.
 
-Kamera/strekkoder, QR-deling, automatisk kildeoppdatering, backend og synkronisering er ikke inkludert. De er valgfrie videreutviklingsoppgaver, ikke simulerte funksjoner.
+Kamera/strekkoder, QR-deling, automatisk kontroll av tekniske produktdata, backend og synkronisering er ikke inkludert. Prisboten kontrollerer bare publisert nettpris for de oppførte målene.

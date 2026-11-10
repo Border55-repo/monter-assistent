@@ -34,7 +34,7 @@ import type {
   SavedCalculation,
 } from "./lib/types";
 import { date, defaultInput, kinds, labels, uid } from "./lib/types";
-import { emptyData, loadData, saveData } from "./lib/storage";
+import { emptyData, loadData, saveData, upgradeCatalog } from "./lib/storage";
 import { productValues } from "./lib/product-input";
 import { download } from "./lib/export";
 import { validateBackup } from "./lib/backup";
@@ -45,12 +45,18 @@ import { Assistant } from "./components/Assistant";
 import { QuickTools } from "./components/QuickTools";
 import { CalcIcon, Heading, Modal, TextLink } from "./components/ui";
 import { HouseIllustration } from "./components/Diagram";
+import { GlobalSearch } from "./components/GlobalSearch";
+import { CustomerHelp } from "./components/CustomerHelp";
+import type { SearchHit } from "./lib/search";
+import { validPriceFeed } from "./lib/prices";
+import type { PriceFeed } from "./lib/prices";
 type Page =
   | "home"
   | "calculators"
   | "calc"
   | "projects"
   | "assistant"
+  | "customer"
   | "products"
   | "quick"
   | "settings";
@@ -60,6 +66,7 @@ const titles: Record<Page, string> = {
   calc: "Materialberegning",
   projects: "Prosjekter",
   assistant: "Produktassistent",
+  customer: "Kundehjelp",
   products: "Produktregister",
   quick: "Hurtigverktøy",
   settings: "Innstillinger",
@@ -102,6 +109,44 @@ export default function App() {
     [restore, setRestore] = useState<AppData | null>(null);
   const backupInput = useRef<HTMLInputElement>(null),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [globalSearch, setGlobalSearch] = useState(false);
+  const [productRequest, setProductRequest] = useState<{
+    id: string;
+    nonce: number;
+  }>();
+  const [guideRequest, setGuideRequest] = useState<{
+    id: string;
+    nonce: number;
+  }>();
+  const [customerTopic, setCustomerTopic] = useState("");
+  const [customerChecks, setCustomerChecks] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [priceFeed, setPriceFeed] = useState<PriceFeed | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = () => {
+      void fetch(`${import.meta.env.BASE_URL}prices.json`, {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((raw) => {
+          if (!controller.signal.aborted) setPriceFeed(validPriceFeed(raw));
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setPriceFeed(null);
+        });
+    };
+    refresh();
+    const timer = setInterval(refresh, 15 * 60000);
+    window.addEventListener("online", refresh);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener("online", refresh);
+    };
+  }, []);
   const notify = useCallback((s: string) => {
     setToast(s);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -200,7 +245,7 @@ export default function App() {
     const base = data.drafts[p.category] || defaults[p.category];
     updateDraft(p.category, {
       ...base,
-      values: { ...base.values, ...productValues(p.category, p) },
+      values: { ...base.values, ...productValues(p.category, p), priceSource: "" },
     });
     startCalculation(p.category);
   };
@@ -208,6 +253,23 @@ export default function App() {
     setSelectedProjectId(id);
     setData((d) => ({ ...d, activeProjectId: id }));
     navigate("projects");
+  };
+  const openGuide = (id: string) => {
+    setGuideRequest({ id, nonce: Date.now() });
+    navigate("assistant");
+  };
+  const openSearchHit = (hit: SearchHit) => {
+    setGlobalSearch(false);
+    if (hit.type === "product") {
+      setProductRequest({ id: hit.id, nonce: Date.now() });
+      navigate("products");
+    } else if (hit.type === "calculator") startCalculation(hit.id as Kind);
+    else if (hit.type === "guide") openGuide(hit.id);
+    else if (hit.type === "project") openProject(hit.id);
+    else {
+      setCustomerTopic(hit.id);
+      navigate("customer");
+    }
   };
   const saveCalculation = (result: Calculation, input: CalcInput) => {
     const now = new Date().toISOString(),
@@ -326,6 +388,7 @@ export default function App() {
     { id: "calculators" as const, icon: CalculatorIcon, label: "Kalkulatorer" },
     { id: "projects" as const, icon: FolderOpen, label: "Prosjekter" },
     { id: "assistant" as const, icon: BookOpen, label: "Produktassistent" },
+    { id: "customer" as const, icon: CircleHelp, label: "Kundehjelp" },
     { id: "quick" as const, icon: Zap, label: "Hurtigverktøy" },
   ];
   const calcCards = (list: readonly Kind[]) =>
@@ -456,6 +519,13 @@ export default function App() {
             <strong>{titles[page]}</strong>
           </div>
           <div className="topbar-actions">
+            <button
+              className="icon-button"
+              aria-label="Åpne samlet søk"
+              onClick={() => setGlobalSearch(true)}
+            >
+              <Search size={21} />
+            </button>
             <div className={`connection ${online ? "" : "offline"}`}>
               {online ? <Wifi size={15} /> : <WifiOff size={15} />}
               <span>{online ? "På nett" : "Uten nett"}</span>
@@ -528,6 +598,22 @@ export default function App() {
                     timeZone: "Europe/Oslo",
                   }).format(new Date())}
                 </span>
+              </div>
+              <div className="home-task-bar">
+                <button
+                  className="home-search"
+                  onClick={() => setGlobalSearch(true)}
+                >
+                  <Search size={21} />
+                  <span>Søk vare, varenummer eller kundeoppgave</span>
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => navigate("customer")}
+                >
+                  <CircleHelp size={19} /> Hjelp en kunde
+                </button>
               </div>
               <section className="hero">
                 <div className="hero-copy">
@@ -739,6 +825,7 @@ export default function App() {
           )}
           {page === "calc" && (
             <Calculator
+              priceFeed={priceFeed}
               key={kind}
               kind={kind}
               input={data.drafts[kind] || defaults[kind]}
@@ -764,6 +851,27 @@ export default function App() {
           )}
           {page === "projects" && (
             <Projects
+              onSaveWorkNote={async (id, note) => {
+                const next = {
+                  ...data,
+                  projects: data.projects.map((p) =>
+                    p.id === id
+                      ? {
+                          ...p,
+                          workNote: note,
+                          updatedAt: new Date().toISOString(),
+                        }
+                      : p,
+                  ),
+                };
+                await saveData(next);
+                setData((d) => ({
+                  ...d,
+                  projects: d.projects.map((p) => p.id === id
+                    ? { ...p, workNote: note, updatedAt: next.projects.find((x) => x.id === id)!.updatedAt }
+                    : p),
+                }));
+              }}
               projects={data.projects}
               onChange={(projects) =>
                 setData((d) => ({
@@ -788,13 +896,40 @@ export default function App() {
           )}
           {page === "products" && (
             <Products
+              priceFeed={priceFeed}
+              request={productRequest}
               products={data.products}
+              locations={data.locations || {}}
+              onLocation={(id, location) =>
+                setData((d) => ({
+                  ...d,
+                  locations: { ...d.locations, [id]: location },
+                }))
+              }
               onChange={(products) => setData((d) => ({ ...d, products }))}
               notify={notify}
               onUse={useProduct}
             />
           )}
-          {page === "assistant" && <Assistant />}
+          {page === "assistant" && <Assistant request={guideRequest} />}
+          {page === "customer" && (
+            <>
+              <Heading eyebrow="UTE I BUTIKKEN" title="Kundehjelp">
+                Gode spørsmål, relevante sjekkpunkter og en kort vei til
+                materiallisten.
+              </Heading>
+              <CustomerHelp
+                topicId={customerTopic}
+                onSelect={setCustomerTopic}
+                checked={customerChecks}
+                onCheck={(key, value) =>
+                  setCustomerChecks((c) => ({ ...c, [key]: value }))
+                }
+                onCalculate={startCalculation}
+                onGuide={openGuide}
+              />
+            </>
+          )}
           {page === "quick" && <QuickTools />}
           {page === "settings" && (
             <>
@@ -928,6 +1063,13 @@ export default function App() {
           </button>
         </div>
       )}
+      {globalSearch && (
+        <GlobalSearch
+          data={data}
+          onOpen={openSearchHit}
+          onClose={() => setGlobalSearch(false)}
+        />
+      )}
       {help && (
         <Modal title="Fra mål til materialliste" onClose={() => setHelp(false)}>
           <ol className="help-steps">
@@ -1005,7 +1147,7 @@ export default function App() {
             <button
               className="primary"
               onClick={() => {
-                setData(restore);
+                setData(upgradeCatalog(restore));
                 setSelectedProjectId("");
                 setEditing(null);
                 setRestore(null);

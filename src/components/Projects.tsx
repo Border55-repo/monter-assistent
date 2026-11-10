@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -21,10 +21,18 @@ import type {
   Project,
   SavedCalculation,
 } from "../lib/types";
-import { date, format, money, numberFrom, uid } from "../lib/types";
+import {
+  date,
+  format,
+  money,
+  numberFrom,
+  uid,
+  projectStatuses,
+} from "../lib/types";
+import type { ProjectStatus } from "../lib/types";
 import { calculationTitle, projectTotal } from "../lib/calculators";
 import { exportPdf, projectText } from "../lib/export";
-import { CalcIcon, Empty, Field, Heading, Modal } from "./ui";
+import { CalcIcon, Empty, Field, Heading, Modal, Select } from "./ui";
 interface Props {
   projects: Project[];
   onChange: (p: Project[]) => void;
@@ -33,6 +41,7 @@ interface Props {
   onCalculate: (kind?: Kind) => void;
   onEditCalculation: (project: Project, c: SavedCalculation) => void;
   notify: (s: string) => void;
+  onSaveWorkNote: (id: string, note: string) => Promise<void>;
 }
 export function Projects({
   projects,
@@ -42,6 +51,7 @@ export function Projects({
   onCalculate,
   onEditCalculation,
   notify,
+  onSaveWorkNote,
 }: Props) {
   const [newName, setNewName] = useState(""),
     [newModal, setNewModal] = useState(false),
@@ -54,7 +64,13 @@ export function Projects({
     [lineQuantity, setLineQuantity] = useState("1"),
     [linePrice, setLinePrice] = useState(""),
     [pdfBusy, setPdfBusy] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [workNote, setWorkNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const selected = projects.find((p) => p.id === selectedId);
+  useEffect(() => {
+    setWorkNote(selected?.workNote || "");
+  }, [selected?.id]);
   const update = (p: Project) =>
     onChange(
       projects.map((x) =>
@@ -71,6 +87,7 @@ export function Projects({
       updatedAt: now,
       calculations: [],
       lines: [],
+      status: "calculating",
     };
     onChange([p, ...projects]);
     setSelectedId(p.id);
@@ -83,6 +100,7 @@ export function Projects({
     clone.id = uid();
     clone.name += " – kopi";
     clone.createdAt = clone.updatedAt = new Date().toISOString();
+    clone.status = "calculating";
     onChange([clone, ...projects]);
     setSelectedId(clone.id);
     notify("Prosjektet er kopiert.");
@@ -247,6 +265,56 @@ export function Projects({
               </>
             )}
           </div>
+          {!customer && (
+            <section className="panel project-workflow no-print">
+              <Select
+                label="Arbeidsstatus"
+                value={selected.status || "calculating"}
+                onChange={(status) =>
+                  update({ ...selected, status: status as ProjectStatus })
+                }
+                options={Object.entries(projectStatuses).map(
+                  ([value, label]) => ({ value, label }),
+                )}
+              />
+              <div>
+                <label className="field">
+                  <span>Neste steg / arbeidsnotat</span>
+                  <textarea
+                    aria-label="Neste steg / arbeidsnotat"
+                    maxLength={500}
+                    rows={2}
+                    placeholder="F.eks. kontroller handelslengder før plukk"
+                    value={workNote}
+                    onChange={(e) => setWorkNote(e.target.value)}
+                  />
+                  <small>
+                    Korte fagnotater uten personopplysninger. Lagres på denne
+                    enheten.
+                  </small>
+                </label>
+                <button
+                  className="secondary"
+                  disabled={
+                    savingNote || workNote === (selected.workNote || "")
+                  }
+                  onClick={() => {
+                    setSavingNote(true);
+                    void onSaveWorkNote(selected.id, workNote)
+                      .then(() => notify("Arbeidsnotatet er lagret."))
+                      .catch(() =>
+                        notify(
+                          "Notatet kunne ikke lagres. Behold fanen åpen og prøv igjen.",
+                        ),
+                      )
+                      .finally(() => setSavingNote(false));
+                  }}
+                >
+                  {savingNote ? "Lagrer …" : "Lagre arbeidsnotat"}
+                </button>
+              </div>
+            </section>
+          )}
           <div className="project-layout">
             <div>
               <section className="panel material-panel">
@@ -285,7 +353,10 @@ export function Projects({
                           </strong>
                           {l.price !== undefined && (
                             <small>
-                              {money(l.price)} / {l.unit} · manuell
+                              {money(l.price)} / {l.unit} ·{" "}
+                              {l.priceSource.startsWith("Publisert nettpris")
+                                ? "Publisert nettpris"
+                                : "manuell"}
                             </small>
                           )}
                           {!customer && (
@@ -423,7 +494,8 @@ export function Projects({
                   priser mangler.
                 </p>
                 <p className="small muted">
-                  Priser er manuelt registrert i NOK. Mva-status og gyldighet må
+                  Priser er valgte øyeblikksbilder i NOK. Nettpriser oppdaterer
+                  ikke denne listen automatisk. Mva-status og gyldighet må
                   avklares før tilbud.
                 </p>
                 <div className="saved-indicator">
@@ -453,6 +525,32 @@ export function Projects({
           >
             Samle beregninger og produkter i én materialliste.
           </Heading>
+          {projects.length > 0 && (
+            <div className="toolbar">
+              <Select
+                label="Vis prosjektstatus"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={[
+                  { value: "all", label: "Alle statuser" },
+                  ...Object.entries(projectStatuses).map(([value, label]) => ({
+                    value,
+                    label,
+                  })),
+                ]}
+              />
+              <span className="small muted">
+                {
+                  projects.filter(
+                    (p) =>
+                      statusFilter === "all" ||
+                      (p.status || "calculating") === statusFilter,
+                  ).length
+                }{" "}
+                prosjekter
+              </span>
+            </div>
+          )}
           {!projects.length ? (
             <section className="panel">
               <Empty
@@ -470,49 +568,62 @@ export function Projects({
             </section>
           ) : (
             <div className="project-grid">
-              {projects.map((p) => (
-                <div className="panel project-card" key={p.id}>
-                  <div className="project-card-top">
-                    <span className="folder-icon">
-                      <FolderOpen size={24} />
-                    </span>
-                    <span className="badge">Lokalt lagret</span>
-                  </div>
-                  <button
-                    className="project-title"
-                    onClick={() => setSelectedId(p.id)}
-                  >
-                    {p.name}
-                  </button>
-                  <p>
-                    {p.calculations.length} beregninger · {p.lines.length}{" "}
-                    materiallinjer
-                  </p>
-                  <div className="project-card-bottom">
-                    <span>{date(p.updatedAt)}</span>
+              {projects
+                .filter(
+                  (p) =>
+                    statusFilter === "all" ||
+                    (p.status || "calculating") === statusFilter,
+                )
+                .map((p) => (
+                  <div className="panel project-card" key={p.id}>
+                    <div className="project-card-top">
+                      <span className="folder-icon">
+                        <FolderOpen size={24} />
+                      </span>
+                      <span
+                        className={`badge ${p.status === "done" ? "green" : p.status === "clarify" ? "amber" : ""}`}
+                      >
+                        {projectStatuses[p.status || "calculating"]}
+                      </span>
+                    </div>
                     <button
-                      className="icon-button"
-                      aria-label={`Kopier ${p.name}`}
-                      onClick={() => duplicate(p)}
+                      className="project-title"
+                      onClick={() => setSelectedId(p.id)}
                     >
-                      <Copy size={16} />
+                      {p.name}
                     </button>
+                    <p>
+                      {p.calculations.length} beregninger · {p.lines.length}{" "}
+                      materiallinjer
+                    </p>
+                    {p.workNote && (
+                      <p className="work-note">Neste steg: {p.workNote}</p>
+                    )}
+                    <div className="project-card-bottom">
+                      <span>{date(p.updatedAt)}</span>
+                      <button
+                        className="icon-button"
+                        aria-label={`Kopier ${p.name}`}
+                        onClick={() => duplicate(p)}
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        className="icon-button danger"
+                        aria-label={`Slett ${p.name}`}
+                        onClick={() => setDeleteId(p.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                     <button
-                      className="icon-button danger"
-                      aria-label={`Slett ${p.name}`}
-                      onClick={() => setDeleteId(p.id)}
+                      className="secondary full"
+                      onClick={() => setSelectedId(p.id)}
                     >
-                      <Trash2 size={16} />
+                      Åpne materialliste
                     </button>
                   </div>
-                  <button
-                    className="secondary full"
-                    onClick={() => setSelectedId(p.id)}
-                  >
-                    Åpne materialliste
-                  </button>
-                </div>
-              ))}
+                ))}
             </div>
           )}
           <div className="notice subtle">

@@ -27,6 +27,10 @@ import { needsReview } from "../lib/seed";
 import { safeUrl } from "../lib/products";
 import { CalcIcon, Field, Select } from "./ui";
 import { Diagram } from "./Diagram";
+import { WallEditor } from "./WallEditor";
+import { WebPrice } from "./WebPrice";
+import { priceTime } from "../lib/prices";
+import type { PriceFeed } from "../lib/prices";
 interface Props {
   kind: Kind;
   input: CalcInput;
@@ -41,6 +45,7 @@ interface Props {
   onBack: () => void;
   editing: boolean;
   onReset: () => void;
+  priceFeed: PriceFeed | null;
 }
 export function Calculator(props: Props) {
   const { kind, input, onChange, products, projects, activeProjectId } = props;
@@ -48,11 +53,22 @@ export function Calculator(props: Props) {
   const [moreOptions, setMoreOptions] = useState(false);
   const resultPanel = useRef<HTMLElement>(null);
   const p = products.find((p) => p.id === input.values.productId && p.active);
+  const supportsWalls = ["insulation", "timber", "sheets", "cladding"].includes(
+    kind,
+  );
+  const multiWall = supportsWalls && input.values.surfaceMode === "walls";
   const effective = resolveProductInput(kind, input, p),
     v = effective.values;
   const locked = p ? productValues(kind, p) : {};
   const set = (key: string, val: string) =>
-    onChange({ ...input, values: { ...input.values, [key]: val } });
+    onChange({
+      ...input,
+      values: {
+        ...input.values,
+        ...(key === "price" ? { priceSource: "" } : {}),
+        [key]: val,
+      },
+    });
   const field = (
     key: string,
     label: string,
@@ -138,6 +154,7 @@ export function Calculator(props: Props) {
       ...input,
       values: {
         ...effective.values,
+        priceSource: "",
         ...(chosen
           ? productValues(kind, chosen)
           : { productId: "", price: "" }),
@@ -267,6 +284,27 @@ export function Calculator(props: Props) {
                 </span>
               </p>
             )}
+            {p && (
+              <WebPrice
+                product={p}
+                feed={props.priceFeed}
+                onUse={(quote) => {
+                  const converted = productValues(kind, {
+                    ...p,
+                    price: quote.salesAmount,
+                  });
+                  if (converted.price)
+                    onChange({
+                      ...input,
+                      values: {
+                        ...input.values,
+                        price: converted.price,
+                        priceSource: `Publisert nettpris hos Montér, kontrollert ${priceTime(quote.checkedAt)}. ${quote.sourceUrl}. Butikk-/kundepris og mva-status må avklares.`,
+                      },
+                    });
+                }}
+              />
+            )}
           </section>
           <section className="panel">
             <div className="section-heading">
@@ -286,7 +324,64 @@ export function Calculator(props: Props) {
                 <RotateCcw size={17} />
               </button>
             </div>
-            {kind !== "flooring" && kind !== "fixings" && (
+            {supportsWalls && (
+              <div className="segmented wall-mode">
+                <button
+                  className={!multiWall ? "active" : ""}
+                  onClick={() => set("surfaceMode", "single")}
+                >
+                  Én flate / like flater
+                </button>
+                <button
+                  className={multiWall ? "active" : ""}
+                  onClick={() =>
+                    onChange({
+                      ...input,
+                      values: { ...input.values, surfaceMode: "walls" },
+                      walls: input.walls?.length
+                        ? input.walls
+                        : [
+                            {
+                              id: uid(),
+                              name: "Vegg 1",
+                              length: v.measureMode === "area" ? "" : v.length,
+                              height: v.measureMode === "area" ? "" : v.width,
+                              openings: structuredClone(input.openings),
+                            },
+                          ],
+                    })
+                  }
+                >
+                  Flere ulike vegger
+                </button>
+              </div>
+            )}
+            {multiWall && <WallEditor input={input} onChange={onChange} />}
+            {multiWall && (
+              <>
+                <div className="fields-grid">
+                  {kind === "timber" && field("cc", "Stenderavstand c/c", "mm")}
+                  {kind === "insulation" &&
+                    select("construction", "Konstruksjon", [
+                      "Vegg",
+                      "Yttervegg",
+                      "Tak",
+                      "Gulv",
+                      "Annen konstruksjon",
+                    ])}
+                </div>
+                <p className="small muted">
+                  {input.walls?.length} vegger
+                  {kind === "timber" || kind === "insulation"
+                    ? ` · c/c ${v.cc} mm`
+                    : ""}
+                  {kind === "timber"
+                    ? ` · per vegg: ${v.bottom} bunnsvill + ${v.top} toppsvill, ${v.corners} hjørnetillegg, ${v.extraLm} ekstra lm`
+                    : ""}
+                </p>
+              </>
+            )}
+            {kind !== "flooring" && kind !== "fixings" && !multiWall && (
               <>
                 <div className="fields-grid">
                   {kind === "insulation" &&
@@ -934,9 +1029,8 @@ export function Calculator(props: Props) {
           </section>
           {kind !== "flooring" &&
             kind !== "fixings" &&
-            v.measureMode !== "area" && (
-              <Diagram input={effective} kind={kind} />
-            )}
+            v.measureMode !== "area" &&
+            !multiWall && <Diagram input={effective} kind={kind} />}
           {result && (
             <>
               <div className="calculation-notice">

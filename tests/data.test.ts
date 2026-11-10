@@ -93,7 +93,7 @@ describe("Produktimport, eksport og datakontroll", () => {
   });
   it("konverterer salgspris fra stykk til lm og pakke til plate", () => {
     expect(
-      productValues("deck", { ...seedProducts.at(-1)!, price: 96 }).price,
+      productValues("deck", { ...seedProducts.find(p=>p.id==="sca-48982935")!, price: 96 }).price,
     ).toBe("20");
     expect(
       productValues("sheets", {

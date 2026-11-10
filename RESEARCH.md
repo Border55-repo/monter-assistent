@@ -66,3 +66,16 @@ Kalkulatoren krever faktisk pakningsdekning. Mønster og svinn vises som brukere
 - Ingen lokal lagerstatus, kampanjepris, individuell kundepris eller Montér Lillestrøm-tilgjengelighet er kontrollert eller simulert.
 
 Formlene er egne, dokumenterte geometriske avledninger. Kildene avgrenser faglig gyldighet og produktbruk; de er ikke fremstilt som en godkjenning av programvaren. Se [CALCULATIONS.md](CALCULATIONS.md) for regneregler og etterprøvbare kontrollregninger.
+
+## Kundehjelp og sortimentsutvidelse – 10.11.2026
+
+Kundehjelpen bruker seks avgrensede oppgaver: terrasse, isolasjon, lettvegg, kledning, gulv og festemidler. Spørsmål og sjekkpunkter er redaksjonelle hjelpemidler, ikke observasjoner av ansatte eller dokumentasjon av spart tid. Ingen varer legges til automatisk. Kildene er direkte lenket i hver oppgave, og åpne fagtekster ble kontrollert ved denne utvidelsen:
+
+- Bergene Holm: montering av terrassebord – produkt/miljø, fuge og opplegg.
+- GLAVA: isolering og tetting av innervegger samt generelt om yttervegger – konstruksjonsavhengig isolasjon og tetting.
+- Gyproc: skrueguide – plate og underlag må passe festemidlet.
+- Moelven: montering av utvendig kledning – profilspesifikk utførelse og tilbehør.
+- Pergo: underlag til parkett – betingelser for underlag/fuktsikring, ikke en regel for alle gulv.
+- ESSVE: skruekvalitet til terrasse – miljø og materialvalg avklares.
+
+16 nye reelle produktvarianter er dokumentert i [trelast/kledning](research/timber-cladding.md) og [gulv/plater/festemidler](research/floor-sheets-fixings.md). Samlet register er 27 varianter. Bare støttede felt er markert kontrollert, og ukjent produsent, dekkmål og fast lengde beholdes tomt. Prisundersøkelsen og de observerte enhetskodene er dokumentert i [prisfunnene](research/price-findings.md) og [PRISBOT.md](PRISBOT.md). Teknisk produktkontroll og prisobservasjon er separate prosesser.

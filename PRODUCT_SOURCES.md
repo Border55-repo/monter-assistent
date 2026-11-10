@@ -1,5 +1,11 @@
 # Produktdatakilder
 
+## Utvidelse 10.11.2026
+
+16 nye kildekontrollerte varianter er lagt til, totalt 27. Se [trelast og kledning](research/timber-cladding.md) og [gulv, plater og festemidler](research/floor-sheets-fixings.md) for eksakte varianter, dokumentlenker og avvik. Dette er et representativt utvalg, ikke hele Montér-sortimentet. Ukjente dekkmål og fallende lengder er ikke gjettet. [Prisboten](PRISBOT.md) holder publiserte nettprisobservasjoner separat fra produktdata og manuelle priser.
+
+Nye poster legges til én gang ved katalogrevisjon 2, uten å endre eksisterende poster med samme id, NOBB eller Montér-artikkel. Lokale priser, deaktivering, prosjekter og plasseringer beholdes. Eldre sikkerhetskopier støttes.
+
 Kontrollert 09.11.2026. Produktene finnes i `src/lib/seed.ts`; ved første oppstart kopieres de til brukerens redigerbare IndexedDB-register. Senere appoppdateringer erstatter ikke det lokale registeret. Pris og lagerstatus mangler for alle medfølgende produkter.
 
 ## Registerets dokumenterte varianter

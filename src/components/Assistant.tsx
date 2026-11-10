@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, ExternalLink, Search } from "lucide-react";
 import { guides } from "../lib/guides";
 import type { Guide } from "../lib/guides";
 import { Heading, Modal } from "./ui";
-export function Assistant() {
+export function Assistant({
+  request,
+}: {
+  request?: { id: string; nonce: number };
+}) {
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState("Alle"),
     [selected, setSelected] = useState<Guide | null>(null);
+  useEffect(() => {
+    if (request) setSelected(guides.find((g) => g.id === request.id) || null);
+  }, [request]);
   const filtered = guides.filter(
     (g) =>
       (category === "Alle" || g.category === category) &&

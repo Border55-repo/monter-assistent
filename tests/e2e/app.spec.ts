@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { seedProducts } from "../../src/lib/seed";
 import { readFile, writeFile } from "node:fs/promises";
 const basePath = process.env.VITE_BASE_PATH || "/";
 const go = async (page: Page, hash = "/") => {
@@ -19,6 +20,210 @@ const selectGlava = async (page: Page) => {
     .getByLabel("Velg produkt", { exact: true })
     .selectOption("glava-50673624");
 };
+
+test("samlet søk finner varenummer og lagret vareplassering på mobil", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await go(page);
+  await page
+    .getByRole("button", { name: "Åpne samlet søk", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Søk i hele appen", exact: true })
+    .pressSequentially("101186758");
+  await page
+    .getByRole("button", { name: /GLAVA Proff 34 Plate 100 mm/ })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Plassering ikke registrert",
+  );
+  await page.getByRole("button", { name: "Endre vareplassering" }).click();
+  await page.getByLabel("Område", { exact: true }).pressSequentially("Utehall");
+  await page.getByLabel("Reol", { exact: true }).fill("B12");
+  await page.getByLabel("Fag / hylle", { exact: true }).fill("3");
+  await page
+    .getByRole("button", { name: "Lagre plassering", exact: true })
+    .click();
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Åpne samlet søk", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Søk i hele appen", exact: true })
+    .fill("B12");
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByRole("button", { name: /GLAVA Proff 34 Plate 100 mm/ }),
+  ).toContainText("Utehall");
+  await page.screenshot({
+    path: "test-results/mobile-search.png",
+    animations: "disabled",
+  });
+});
+test("prosjektstatus og neste steg bevares og kan filtreres", async ({
+  page,
+}) => {
+  await go(page, "/projects");
+  await page
+    .getByRole("button", { name: "Nytt prosjekt", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Prosjektnavn", { exact: true }).fill("Bod vegger");
+  await dialog
+    .getByRole("button", { name: "Opprett prosjekt", exact: true })
+    .click();
+  await page
+    .getByLabel("Arbeidsstatus", { exact: true })
+    .selectOption("clarify");
+  await page
+    .getByLabel("Neste steg / arbeidsnotat", { exact: true })
+    .pressSequentially("Kontroller handelslengder");
+  await expect(
+    page.getByLabel("Neste steg / arbeidsnotat", { exact: true }),
+  ).toHaveValue("Kontroller handelslengder");
+  await page
+    .getByRole("button", { name: "Lagre arbeidsnotat", exact: true })
+    .click();
+  await expect(
+    page.getByText("Arbeidsnotatet er lagret.", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page
+    .getByLabel("Vis prosjektstatus", { exact: true })
+    .selectOption("clarify");
+  await expect(page.locator(".project-card")).toContainText(
+    "Kontroller handelslengder",
+  );
+  await page
+    .getByLabel("Vis prosjektstatus", { exact: true })
+    .selectOption("done");
+  await expect(page.locator(".project-card")).toHaveCount(0);
+});
+test("kundehjelp knytter avklaringer til fagguide og kalkulator", async ({
+  page,
+}) => {
+  await go(page, "/customer");
+  await page
+    .getByRole("button", { name: /Kunden skal bygge terrasse/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Avklar før beregning" }),
+  ).toBeVisible();
+  await page.getByRole("checkbox").first().check();
+  await expect(page.getByText(/1 av 4 avklart/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Åpne fagguide", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Fuge, bjelker og innfesting",
+  );
+  await page.getByRole("button", { name: "Lukk dialog" }).click();
+  await page.getByRole("button", { name: "Kundehjelp", exact: true }).click();
+  await expect(page.getByRole("checkbox").first()).toBeChecked();
+  await page
+    .getByRole("button", { name: "Nullstill for neste kunde", exact: true })
+    .click();
+  await expect(page.getByRole("checkbox").first()).not.toBeChecked();
+  await page.screenshot({
+    path: "test-results/customer-help.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Terrasse", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Terrasse", exact: true }),
+  ).toBeVisible();
+});
+test("flere ulike vegger får egne åpninger og bevares ved redigering", async ({
+  page,
+}) => {
+  await calc(page, "insulation");
+  await selectGlava(page);
+  await page
+    .getByRole("button", { name: "Flere ulike vegger", exact: true })
+    .click();
+  await page.getByLabel("Lengde vegg 1", { exact: true }).fill("5");
+  await page.getByLabel("Høyde vegg 1", { exact: true }).fill("2,4");
+  await page
+    .getByRole("button", { name: "Legg til vegg", exact: true })
+    .click();
+  await page.getByLabel("Lengde vegg 2", { exact: true }).fill("4");
+  await page
+    .getByRole("region", { name: "Vegg 1", exact: true })
+    .getByRole("button", { name: "Legg til åpning", exact: true })
+    .click();
+  await page.getByLabel("Bredde åpning 1 vegg 1", { exact: true }).fill("1");
+  await page.getByLabel("Høyde åpning 1 vegg 1", { exact: true }).fill("2");
+  await expect(page.locator(".primary-result")).toContainText("3");
+  await page.screenshot({
+    path: "test-results/multiple-walls.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Legg til i materialliste", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: /Rediger beregning Isolasjon · 2 vegger/ })
+    .click();
+  await expect(page.getByLabel("Lengde vegg 2", { exact: true })).toHaveValue(
+    "4",
+  );
+  await expect(
+    page.getByLabel("Høyde åpning 1 vegg 1", { exact: true }),
+  ).toHaveValue("2");
+});
+test("kontrollert nettpris kan brukes eksplisitt uten å erstatte manuell registerpris", async ({
+  page,
+}) => {
+  const p = seedProducts.find((p) => p.id === "glava-50673624")!;
+  const now = new Date().toISOString();
+  await page.route("**/prices.json", (route) =>
+    route.fulfill({
+      json: {
+        version: 1,
+        checkedAt: now,
+        entries: [
+          {
+            productId: p.id,
+            articleNumber: p.monterSku,
+            sourceUrl: p.monterUrl,
+            checkedAt: now,
+            status: "ok",
+            amount: 108,
+            unit: "m²",
+            salesAmount: 738.72,
+            salesUnit: "pk",
+            currency: "NOK",
+            vat: "unconfirmed",
+          },
+        ],
+      },
+    }),
+  );
+  await calc(page, "insulation");
+  await selectGlava(page);
+  await expect(
+    page.getByText("PUBLISERT NETTPRIS · NOK", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Bruk denne nettprisen", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Vis flere valg og priser", exact: true })
+    .click();
+  await expect(page.getByLabel("Pris per pakke", { exact: true })).toHaveValue(
+    "738.72",
+  );
+  await page
+    .getByRole("button", { name: "Legg til i materialliste", exact: true })
+    .click();
+  await expect(page.locator(".material-line")).toContainText(
+    "Publisert nettpris",
+  );
+});
 test("arbeidsflate, responsiv mobilvisning og mørk modus", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -297,7 +502,7 @@ test("produktregister oppretter, oppdaterer, importerer og eksporterer", async (
   page,
 }) => {
   await go(page, "/products");
-  await expect(page.locator("tbody tr")).toHaveCount(11);
+  await expect(page.locator("tbody tr")).toHaveCount(seedProducts.length);
   await page.getByRole("button", { name: "Nytt produkt" }).click();
   await page
     .getByLabel("Produktnavn", { exact: true })
@@ -307,7 +512,7 @@ test("produktregister oppretter, oppdaterer, importerer og eksporterer", async (
   await page
     .getByRole("button", { name: "Lagre produkt", exact: true })
     .click();
-  await expect(page.locator("tbody tr")).toHaveCount(12);
+  await expect(page.locator("tbody tr")).toHaveCount(seedProducts.length + 1);
   await page.getByLabel("Søk i produkter").fill("Lokalt testprodukt");
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page
@@ -334,7 +539,7 @@ test("produktregister oppretter, oppdaterer, importerer og eksporterer", async (
   await page
     .getByRole("button", { name: "Importer 1 produkter", exact: true })
     .click();
-  await expect(page.locator("tbody tr")).toHaveCount(13);
+  await expect(page.locator("tbody tr")).toHaveCount(seedProducts.length + 2);
   await page.locator("input[type=file]").setInputFiles({
     name: "feil.csv",
     mimeType: "text/csv",
@@ -343,7 +548,7 @@ test("produktregister oppretter, oppdaterer, importerer og eksporterer", async (
   await expect(page.getByRole("status")).toContainText(
     "Eksisterende produkter er beholdt",
   );
-  await expect(page.locator("tbody tr")).toHaveCount(13);
+  await expect(page.locator("tbody tr")).toHaveCount(seedProducts.length + 2);
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Eksporter", exact: true }).click();
   const f = await download;
@@ -506,7 +711,7 @@ test("en faktisk serviceworkeroppdatering bevarer prosjekter og produktdata", as
       page.getByRole("button", { name: "Åpne materialliste" }),
     ).toHaveCount(1);
     await go(page, "/products");
-    await expect(page.locator("tbody tr")).toHaveCount(11);
+    await expect(page.locator("tbody tr")).toHaveCount(seedProducts.length);
   } finally {
     await writeFile(path, original);
   }

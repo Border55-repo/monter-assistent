@@ -1,5 +1,15 @@
 # Beregningsmetoder og kontrollregninger
 
+## Flere ulike vegger – tillegg 10.11.2026
+
+`surfaceMode: walls` bruker opptil 50 vegger med egen lengde, høyde og egne åpninger. En vegg må ha positivt nettoareal. Åpningene kontrolleres mot akkurat sin vegg med samme regler som én flate. Skjulte inndata fra én-flate-visningen brukes ikke. Produkt, svinn og øvrige konstruksjonsvalg er felles.
+
+Isolasjon, plater og kledning bruker summen av veggenes nettoareal før eksisterende pakke-/handelslengdeavrunding. Eksempel: 5×2,4 − 1×2 + 4×2,4 = 19,6 m². Med dekning 10 m²/pk og 0 % reserve blir det 2 pakker totalt. Det forutsettes at samme produkt kan fordeles mellom veggene; ingen kappplan gis.
+
+Stenderverk beregnes separat for hver vegg med den eksisterende motoren. Stendere, sviller, handelslengder og volum summeres. Kappmål vises separat per vegg. Hjørnetillegg, ekstra løpemeter og øvrige felles tillegg gjelder per vegg, slik UI opplyser. Innkjøp rundes per vegg og kapp gjenbrukes ikke mellom vegger. Dette er konservativt og gir ingen styrkedimensjonering.
+
+Veggnavn, mål og forutsetninger følger lagret beregning og eksport. Bytte mellom én og flere vegger beholder begge inndatasett; bare den valgte metoden brukes.
+
 Motorer: `src/lib/calculators.ts`. Hurtigverktøy: `src/lib/quick.ts`. Dette er mengdeberegninger, ikke konstruksjonsteknisk dimensjonering. Produkt- og fagkilder er dokumentert i [RESEARCH.md](RESEARCH.md).
 
 ## Felles regler og enheter

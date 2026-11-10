@@ -4,9 +4,9 @@ Produksjonsbygget er kontrollert lokalt på Windows med Node.js 24 og Microsoft 
 
 | Kontroll | Resultat |
 |---|---|
-| `npm test` | 69 tester bestått, 2 testfiler |
+| `npm test` | 85 tester bestått, 4 testfiler |
 | `npm run build` | TypeScript og Vite bestått; PWA-cache generert |
-| `npm run test:e2e` | 13 nettlesertester bestått, også med GitHub Pages-undermappe |
+| `npm run test:e2e` | 18 nettlesertester bestått, med GitHub Pages-undermappe |
 | `npm audit --json` | 0 rapporterte sårbarheter i den installerte avhengighetslisten |
 | Visuell kontroll | Arbeidsflate i lys/mørk modus, mobil, kalkulator og materialliste |
 
@@ -43,6 +43,19 @@ Nettlesertestene bruker produksjonsbygget og egne, midlertidige nettleserprofile
 
 ## Praktiske begrensninger
 
-Testene dokumenterer programatferd og matematiske metoder, ikke konstruksjonsteknisk godkjenning. Fysisk installasjon på en iPhone/iPad eller Android-enhet er ikke utført; mobilvisning og PWA-grunnlaget er nettlesertestet. Eksterne datablader er ikke garantert tilgjengelige offline. Ingen lokal lagerstatus eller prisintegrasjon er verifisert.
+Testene dokumenterer programatferd og matematiske metoder, ikke konstruksjonsteknisk godkjenning. Fysisk installasjon på en iPhone/iPad eller Android-enhet er ikke utført; mobilvisning og PWA-grunnlaget er nettlesertestet. Eksterne datablader er ikke garantert tilgjengelige offline. Ingen lokal lagerstatus eller butikk-/kundepris er verifisert. Publisert nettpris er kontrollert separat av prisboten.
 
 Kappforslag er mengdegrunnlag uten garanti for optimal fysisk tilpasning; sagspor, renskjæring og byggeplassens opplegg må avklares. Offentlig hosting er etablert på GitHub Pages. Flerbrukertilgang og synkronisering er ikke etablert; egne prosjekter lagres fortsatt lokalt per nettleser. Se [README.md](README.md), [CALCULATIONS.md](CALCULATIONS.md), [RESEARCH.md](RESEARCH.md) og [BRUKERVENNLIGHET.md](BRUKERVENNLIGHET.md).
+
+## Utvidelsen 10.11.2026
+
+Samlet resultat: 103 tester består (85 enhets-/integrasjonstester og 18 nettlesertester). Ingen nye kjøretidsavhengigheter er lagt til.
+
+- Nye tester: samlet søk med varenummer og kundeord, lokale plasseringer, prosjektstatus/arbeidsnotater, katalogutvidelse uten overskriving, bakoverkompatibel backup og alle prisbotmål mot registeret.
+- Flere vegger: ulik geometri, veggtilhørende åpninger, totalareal før pakkeavrunding, separat stender-/handelslengdeberegning og gjenåpning av lagret veggliste.
+- Prisparser: eksakt artikkel/NOBB/URL, enheter og faktorer, utgått variant, utløpt/feil valuta/nullpris, tvetydig pris og ugyldig JSON. Ingen sidekode evalueres.
+- Prisvisning: gammel eller mismatchet pris avvises; aktivt knappetrykk kreves for bruk, og kilde følger lagret materiallinje. Manuell registerpris endres ikke.
+- Reell HTTP-priskontroll lokalt: 22/23 koblede varianter. Den utgåtte varianten får ukjent pris. Dette er et øyeblikksbilde, ingen garanti om butikkpris.
+- E2E kontrollerer faktiske tastetrykk i arbeidsnotat og laster straks siden på nytt etter lagringsbekreftelsen. Mobilens horisontale overflyt etter ny søkeknapp ble funnet og rettet.
+
+Skjermbilder: `test-results/customer-help.png`, `mobile-search.png`, `multiple-walls.png`, og eksisterende mobil-/arbeidsflatebilder. Automatiske fullsidebilder av en scrollet side kan flytte faste sideelementer i skjermbildet; dette er kontrollert separat fra mobilens faktiske bredde.

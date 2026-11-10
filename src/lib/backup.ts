@@ -1,5 +1,5 @@
 import type { AppData, MaterialLine } from "./types";
-import { kinds } from "./types";
+import { kinds, projectStatuses } from "./types";
 import { validateProduct } from "./products";
 export function validateBackup(value: unknown): AppData {
   const fail = () => {
@@ -52,7 +52,25 @@ export function validateBackup(value: unknown): AppData {
         ["id", "name", "length", "width", "doorWidth"].every(
           (k) => typeof r[k as keyof typeof r] === "string",
         ),
-    );
+    ) &&
+    (input.walls === undefined ||
+      (Array.isArray(input.walls) &&
+        input.walls.length <= 50 &&
+        input.walls.every(
+          (w) =>
+            w &&
+            [w.id, w.name, w.length, w.height].every(
+              (s) => typeof s === "string",
+            ) &&
+            Array.isArray(w.openings) &&
+            w.openings.every(
+              (o) =>
+                o &&
+                [o.id, o.name, o.width, o.height, o.count, o.x, o.y].every(
+                  (s) => typeof s === "string",
+                ),
+            ),
+        )));
   for (const [kind, input] of Object.entries(data.drafts))
     if (!kinds.includes(kind as (typeof kinds)[number]) || !inputValid(input))
       return fail();
@@ -65,7 +83,10 @@ export function validateBackup(value: unknown): AppData {
       !Number.isFinite(Date.parse(p.updatedAt)) ||
       !Array.isArray(p.lines) ||
       !p.lines.every(lineValid) ||
-      !Array.isArray(p.calculations)
+      !Array.isArray(p.calculations) ||
+      (p.status !== undefined && !Object.hasOwn(projectStatuses, p.status)) ||
+      (p.workNote !== undefined &&
+        (typeof p.workNote !== "string" || p.workNote.length > 500))
     )
       return fail();
     for (const c of p.calculations)
@@ -93,6 +114,29 @@ export function validateBackup(value: unknown): AppData {
       )
         return fail();
   }
+  if (data.locations !== undefined) {
+    if (
+      !data.locations ||
+      typeof data.locations !== "object" ||
+      Array.isArray(data.locations) ||
+      Object.keys(data.locations).length > 10000
+    )
+      return fail();
+    for (const l of Object.values(data.locations))
+      if (
+        !l ||
+        ![l.area, l.rack, l.shelf].every(
+          (s) => typeof s === "string" && s.length <= 100,
+        ) ||
+        !Number.isFinite(Date.parse(l.checkedAt))
+      )
+        return fail();
+  }
+  if (
+    data.catalogRevision !== undefined &&
+    (!Number.isInteger(data.catalogRevision) || data.catalogRevision < 0)
+  )
+    return fail();
   if (
     data.favorites.some((k) => !kinds.includes(k)) ||
     data.recent.some(

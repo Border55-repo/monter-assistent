@@ -1,4 +1,7 @@
 import type { Product } from "./types";
+import { catalogAdditions } from "./catalog-additions";
+export { catalogAdditions };
+export const catalogRevision = 2;
 const checked = "2026-11-09T22:00:00.000Z";
 const plateSource = "https://www.glava.no/produkter/glava-proff-34-plate";
 const rollSource = "https://www.glava.no/produkter/glava-proff-34-rull";
@@ -226,6 +229,7 @@ export const seedProducts: Product[] = [
       "monterSku",
     ],
   },
+  ...catalogAdditions,
 ];
 export function missingFields(p: Product): string[] {
   const fields: [unknown, string][] = [

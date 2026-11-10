@@ -42,7 +42,49 @@ function integer(
   if (!Number.isInteger(n)) throw new InputError(`${name} må være et heltall.`);
   return n;
 }
-export function surface(input: CalcInput) {
+export function surface(input: CalcInput): {
+  length: number;
+  width: number;
+  count: number;
+  gross: number;
+  openings: number;
+  net: number;
+  direct: boolean;
+} {
+  if (input.values.surfaceMode === "walls") {
+    if (!input.walls?.length || input.walls.length > 50)
+      throw new InputError("Legg inn mellom 1 og 50 vegger.");
+    const parts = input.walls.map((w, i) => {
+      try {
+        return surface({
+          ...input,
+          walls: undefined,
+          values: {
+            ...input.values,
+            surfaceMode: "single",
+            measureMode: "dimensions",
+            length: w.length,
+            width: w.height,
+            count: "1",
+          },
+          openings: w.openings,
+        });
+      } catch (e) {
+        throw new InputError(
+          `${w.name || `Vegg ${i + 1}`}: ${(e as Error).message}`,
+        );
+      }
+    });
+    return {
+      length: 0,
+      width: 0,
+      count: parts.length,
+      gross: parts.reduce((n, a) => n + a.gross, 0),
+      openings: parts.reduce((n, a) => n + a.openings, 0),
+      net: parts.reduce((n, a) => n + a.net, 0),
+      direct: true,
+    };
+  }
   const direct = input.values.measureMode === "area";
   const length = direct ? 1 : positive(input, "length", "Lengde");
   const width = direct ? 1 : positive(input, "width", "Høyde / bredde");
@@ -179,6 +221,70 @@ export function calculate(
   input: CalcInput,
   products: Product[] = [],
 ): Calculation {
+  if (
+    input.values.surfaceMode === "walls" &&
+    ["insulation", "timber", "sheets", "cladding"].includes(kind)
+  )
+    surface(input);
+  if (input.values.surfaceMode === "walls" && kind === "timber") {
+    surface(input); // Validate each wall and its own openings before aggregation.
+    const results = input.walls!.map((w) =>
+      calculate(
+        kind,
+        {
+          ...input,
+          walls: undefined,
+          values: {
+            ...input.values,
+            surfaceMode: "single",
+            measureMode: "dimensions",
+            length: w.length,
+            width: w.height,
+            count: "1",
+          },
+          openings: w.openings,
+        },
+        products,
+      ),
+    );
+    const metrics = results[0].metrics
+      .filter((m) => m.label !== "Kappmål stendere")
+      .map((m) => ({
+        ...m,
+        value: results.reduce(
+          (n, r) => n + r.metrics.find((x) => x.label === m.label)!.value,
+          0,
+        ),
+      }));
+    results.forEach((r, i) =>
+      metrics.push({
+        ...r.metrics.find((m) => m.label === "Kappmål stendere")!,
+        label: `Kappmål · ${input.walls![i].name || `Vegg ${i + 1}`}`,
+        primary: false,
+      }),
+    );
+    const lines = results[0].lines.map((l, i) => ({
+      ...l,
+      quantity: results.reduce((n, r) => n + r.lines[i].quantity, 0),
+      note: results
+        .map((r, j) => `${input.walls![j].name}: ${r.lines[i].note}`)
+        .join(" "),
+    }));
+    return {
+      metrics,
+      lines,
+      netArea: results.reduce((n, r) => n + (r.netArea || 0), 0),
+      assumptions: [
+        "Flere vegger: hver vegg avrundes separat til handelslengder. Kapp deles ikke mellom vegger. Felles hjørnetillegg, ekstra løpemeter og svillvalg gjelder per vegg.",
+        ...results.flatMap((r, i) => [
+          `Vegg ${i + 1}: ${input.walls![i].name}, ${input.walls![i].length} × ${input.walls![i].height} m.`,
+          ...r.assumptions,
+        ]),
+      ],
+      warnings: [...new Set(results.flatMap((r) => r.warnings))],
+      related: [...new Set(results.flatMap((r) => r.related))],
+    };
+  }
   const p = products.find(
     (p) => p.id === input.values.productId && p.active && p.category === kind,
   );
@@ -203,8 +309,17 @@ export function calculate(
     unitPrice = price(input);
   const assumptions = [
     `Svinn: ${format(s)} %.`,
-    "Priser er manuelt registrert i NOK; mva-status må avklares.",
+    input.values.priceSource ||
+      "Priser er manuelt registrert i NOK; mva-status må avklares.",
   ];
+  if (input.values.surfaceMode === "walls")
+    assumptions.push(
+      "Flere vegger summeres før arealbasert innkjøpsavrunding. Samme produkt og svinn gjelder alle veggene.",
+      ...input.walls!.map(
+        (w, i) =>
+          `${w.name || `Vegg ${i + 1}`}: ${w.length} × ${w.height} m; ${w.openings.length} registrerte åpningstyper.`,
+      ),
+    );
   assumptions.push(
     "Geometri, konstruksjonsavstander og svinn er brukerens forutsetninger. Forhåndsutfylte mål er redigerbare regneeksempler, ikke produktanbefalinger.",
   );
@@ -264,9 +379,11 @@ export function calculate(
         ),
       ];
       assumptions.push(
-        a.direct
-          ? `Bruttoareal ${format(a.gross)} m² fra direkte arealinntasting × ${a.count} flater. Åpninger trekkes fra samlet.`
-          : `${format(a.length)} × ${format(a.width)} m × ${a.count} flater. Åpninger trekkes fra én gang med oppgitt antall.`,
+        input.values.surfaceMode === "walls"
+          ? `Bruttoareal ${format(a.gross)} m² summeres fra ${a.count} vegger med egne mål og åpninger.`
+          : a.direct
+            ? `Bruttoareal ${format(a.gross)} m² fra direkte arealinntasting × ${a.count} flater. Åpninger trekkes fra samlet.`
+            : `${format(a.length)} × ${format(a.width)} m × ${a.count} flater. Åpninger trekkes fra én gang med oppgitt antall.`,
         `Arealbasert behov: netto × ${format(factor)}. Pakker = avrund opp(behov / ${format(coverage)} m²).`,
         `C/c ${cc} mm, teoretisk fri bredde ${cc - stud} mm. Stenderareal trekkes ikke fra.`,
       );
@@ -809,11 +926,17 @@ export function calculate(
     )
   )
     throw new InputError("Beregningen er for stor. Reduser mengden.");
+  if (input.values.priceSource && p)
+    for (const material of result.lines)
+      if (material.name === p.name && material.price !== undefined)
+        material.priceSource = input.values.priceSource;
   return result;
 }
 export function projectTotal(lines: MaterialLine[]) {
   return lines.reduce((n, l) => n + l.quantity * (l.price ?? 0), 0);
 }
 export function calculationTitle(kind: Kind, input: CalcInput) {
+  if (input.values.surfaceMode === "walls")
+    return `${labels[kind].short} · ${input.walls?.length || 0} vegger`;
   return `${labels[kind].short}${kind === "flooring" ? ` · ${input.rooms.length} rom` : kind === "fixings" ? "" : input.values.measureMode === "area" ? ` · ${input.values.directArea} m² × ${input.values.count}` : ` · ${input.values.length} × ${input.values.width} m`}`;
 }

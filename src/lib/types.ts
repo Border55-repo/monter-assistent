@@ -29,6 +29,13 @@ export interface CalcInput {
   values: Values;
   openings: Opening[];
   rooms: Room[];
+  walls?: {
+    id: string;
+    name: string;
+    length: string;
+    height: string;
+    openings: Opening[];
+  }[];
 }
 export interface Product {
   id: string;
@@ -100,6 +107,21 @@ export interface Project {
   updatedAt: string;
   calculations: SavedCalculation[];
   lines: MaterialLine[];
+  status?: ProjectStatus;
+  workNote?: string;
+}
+export const projectStatuses = {
+  calculating: "Under beregning",
+  clarify: "Må avklares",
+  picking: "Klar til plukk",
+  done: "Ferdig",
+} as const;
+export type ProjectStatus = keyof typeof projectStatuses;
+export interface ProductLocation {
+  area: string;
+  rack: string;
+  shelf: string;
+  checkedAt: string;
 }
 export interface AppData {
   schemaVersion: 1;
@@ -110,6 +132,8 @@ export interface AppData {
   recent: { kind: Kind; date: string }[];
   theme: string;
   activeProjectId: string;
+  locations?: Record<string, ProductLocation>;
+  catalogRevision?: number;
 }
 export const uid = () => crypto.randomUUID();
 export const format = (n: number, digits = 2) =>

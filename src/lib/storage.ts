@@ -1,6 +1,6 @@
 import { openDB } from "idb";
 import type { AppData } from "./types";
-import { seedProducts } from "./seed";
+import { seedProducts, catalogAdditions, catalogRevision } from "./seed";
 export const emptyData = (): AppData => ({
   schemaVersion: 1,
   products: structuredClone(seedProducts),
@@ -10,6 +10,8 @@ export const emptyData = (): AppData => ({
   recent: [],
   theme: "light",
   activeProjectId: "",
+  locations: {},
+  catalogRevision,
 });
 const db = () =>
   openDB("monter-assistent", 1, {
@@ -20,7 +22,24 @@ const db = () =>
   });
 export async function loadData(): Promise<AppData> {
   const database = await db();
-  return (await database.get("app", "data")) ?? emptyData();
+  return upgradeCatalog((await database.get("app", "data")) ?? emptyData());
+}
+export function upgradeCatalog(data: AppData): AppData {
+  if ((data.catalogRevision || 0) >= catalogRevision) return data;
+  const additions = catalogAdditions.filter(
+    (p) =>
+      !data.products.some(
+        (x) =>
+          x.id === p.id ||
+          (p.nobb && p.nobb === x.nobb) ||
+          (p.monterSku && p.monterSku === x.monterSku),
+      ),
+  );
+  return {
+    ...data,
+    products: [...data.products, ...structuredClone(additions)],
+    catalogRevision,
+  };
 }
 let writes: Promise<void> = Promise.resolve();
 export function saveData(data: AppData): Promise<void> {

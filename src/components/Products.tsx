@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -12,7 +12,11 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import type { Product } from "../lib/types";
+import type { Product, ProductLocation } from "../lib/types";
+import { locationText } from "../lib/search";
+import { WebPrice } from "./WebPrice";
+import { webPriceFor } from "../lib/prices";
+import type { PriceFeed } from "../lib/prices";
 import { date, format, kinds, labels, money } from "../lib/types";
 import {
   csvCell,
@@ -31,8 +35,21 @@ interface Props {
   onChange: (products: Product[]) => void;
   notify: (s: string) => void;
   onUse: (p: Product) => void;
+  request?: { id: string; nonce: number };
+  locations: Record<string, ProductLocation>;
+  onLocation: (id: string, location: ProductLocation) => void;
+  priceFeed: PriceFeed | null;
 }
-export function Products({ products, onChange, notify, onUse }: Props) {
+export function Products({
+  products,
+  onChange,
+  notify,
+  onUse,
+  request,
+  locations,
+  onLocation,
+  priceFeed,
+}: Props) {
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState("all"),
     [showInactive, setShowInactive] = useState(false);
@@ -42,6 +59,16 @@ export function Products({ products, onChange, notify, onUse }: Props) {
     [pending, setPending] = useState<Product[] | null>(null),
     [importing, setImporting] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+  const [locating, setLocating] = useState<Product | null>(null);
+  const [location, setLocation] = useState({ area: "", rack: "", shelf: "" });
+  useEffect(() => {
+    if (request) setSelected(products.find((p) => p.id === request.id) || null);
+  }, [request]);
+  const editLocation = (p: Product) => {
+    setLocation(locations[p.id] || { area: "", rack: "", shelf: "" });
+    setLocating(p);
+    setSelected(null);
+  };
   const filtered = products.filter(
     (p) =>
       (showInactive || p.active) &&
@@ -260,6 +287,7 @@ export function Products({ products, onChange, notify, onUse }: Props) {
                               ? `NOBB ${p.nobb}`
                               : "Varenummer mangler"}
                         </small>
+                        <small>{locationText(locations[p.id])}</small>
                       </span>
                     </button>
                   </td>
@@ -298,6 +326,13 @@ export function Products({ products, onChange, notify, onUse }: Props) {
                     <small>{date(p.updatedAt)}</small>
                   </td>
                   <td>
+                    {webPriceFor(p, priceFeed) && (
+                      <small>
+                        Publisert nettpris:{" "}
+                        {money(webPriceFor(p, priceFeed)!.salesAmount)} /{" "}
+                        {p.unit}
+                      </small>
+                    )}
                     {p.price === undefined ? (
                       <span className="muted">Ikke registrert</span>
                     ) : (
@@ -354,6 +389,24 @@ export function Products({ products, onChange, notify, onUse }: Props) {
               {labels[selected.category].short}
             </span>
             <p>{selected.description}</p>
+            <WebPrice product={selected} feed={priceFeed} />
+            <section className="location-panel">
+              <h3>Finn varen i butikken</h3>
+              <strong>{locationText(locations[selected.id])}</strong>
+              {locations[selected.id] && (
+                <p className="small muted">
+                  Registrert / kontrollert{" "}
+                  {date(locations[selected.id].checkedAt)} · lokal opplysning,
+                  ingen lagerstatus
+                </p>
+              )}
+              <button
+                className="secondary"
+                onClick={() => editLocation(selected)}
+              >
+                Endre vareplassering
+              </button>
+            </section>
             <dl className="detail-grid">
               {[
                 ["Produsent", selected.manufacturer],
@@ -427,8 +480,9 @@ export function Products({ products, onChange, notify, onUse }: Props) {
                   .
                 </p>
                 <p>
-                  Lagerstatus og lokale priser er utilgjengelig. Nettlenker
-                  krever internettilgang.
+                  Lagerstatus og lokale priser er utilgjengelig. Publisert
+                  nettpris vises separat når den er fersk og kontrollert.
+                  Nettlenker krever internettilgang.
                 </p>
               </div>
             </div>
@@ -448,6 +502,60 @@ export function Products({ products, onChange, notify, onUse }: Props) {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+      {locating && (
+        <Modal
+          title={`Vareplassering · ${locating.name}`}
+          onClose={() => setLocating(null)}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onLocation(locating.id, {
+                area: location.area.trim().slice(0, 100),
+                rack: location.rack.trim().slice(0, 100),
+                shelf: location.shelf.trim().slice(0, 100),
+                checkedAt: new Date().toISOString(),
+              });
+              setLocating(null);
+              notify("Vareplasseringen er lagret lokalt.");
+            }}
+          >
+            <p>
+              Registrer den faktiske plasseringen. Dette endrer ikke produktdata
+              eller lagerstatus.
+            </p>
+            <div className="fields-grid">
+              {(
+                [
+                  ["area", "Område"],
+                  ["rack", "Reol"],
+                  ["shelf", "Fag / hylle"],
+                ] as const
+              ).map(([key, label]) => (
+                <Field
+                  key={key}
+                  label={label}
+                  text
+                  value={location[key]}
+                  onChange={(v) => setLocation((l) => ({ ...l, [key]: v }))}
+                />
+              ))}
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setLocating(null)}
+              >
+                Avbryt
+              </button>
+              <button type="submit" className="primary">
+                Lagre plassering
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
       {editing && (

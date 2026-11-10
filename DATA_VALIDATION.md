@@ -1,5 +1,7 @@
 # Datakontroll
 
+Tillegg 10.11.2026: Lokale vareplasseringer lagres separat i `locations` med område, reol, fag/hylle og kontrolldato. De endrer ikke produktets verifiserte felt eller dato. Prosjektstatus, arbeidsnotater (maks 500 tegn) og vegglister er valgfrie og valideres ved gjenoppretting. Appens IndexedDB-versjon og gamle data beholdes. Nettpriser krever entydig variant/enhet og høyst 12 timers alder; de overskriver ikke manuelle registerpriser eller eksisterende prosjektpriser. Se [PRISBOT.md](PRISBOT.md).
+
 ## Registrering og enheter
 
 Produktmodellen er definert i `src/lib/types.ts`. Navn, kjent kategori og salgsenhet er påkrevd. Ukjent produsent, artikkelnummer, GTIN, egenskaper og pris skal ikke fylles med gjetninger. En ufullstendig post kan registreres selv om kalkulatoren fortsatt må kreve manglende pakningsdata.

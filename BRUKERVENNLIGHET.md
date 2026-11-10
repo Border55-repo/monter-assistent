@@ -27,3 +27,11 @@ Gjennomført etter første vellykkede GitHub Pages-publisering. Den offentlige a
 - Lagring, PDF, register, sikkerhetskopi, offline omlasting og oppdatering testes fortsatt.
 
 Det er ikke gjennomført en observert test med butikkansatte eller dokumentert en bestemt tidsbesparelse. Forenklingene bygger på gjennomgang av den fungerende appen og automatiserte oppgavetester. Ingen produktdata eller beregningsformler er endret som del av denne forenklingen.
+
+## Utvidet arbeidsflyt – 10.11.2026
+
+Etter brukerens nye bestilling er samlet søk, lokale vareplasseringer, prosjektstatus/arbeidsnotat og seks kundeoppgaver lagt til. Hjemmesiden har et tydelig søkefelt og «Hjelp en kunde». Søket støtter varenummer og vanlige kundeord. Plasseringer er tomme til faktisk registrering. Arbeidsnotater har eksplisitt lagring som først bekreftes etter fullført IndexedDB-skriving.
+
+Flere ulike vegger støttes med egne mål og åpninger. Produktet velges fortsatt først, og samme produkt gjelder alle veggene. Publiserte nettpriser vises med kilde, enhet og alder; de tas bare inn i en beregning ved et eksplisitt knappetrykk. Manuelle priser og eksisterende prosjekter beholdes.
+
+Mobilkontrollen fant at den ekstra søkeknappen gjorde toppfeltet for bredt. Toppfeltet er rettet og kontrollert ved 390 px bredde. Testene skriver faktiske tastetrykk, gjenåpner data og kontrollerer at hele arbeidsnotatet bevares etter lagringsbekreftelsen. Dette er fortsatt en teknisk gjennomgang; ingen brukertest med butikkansatte eller dokumentert tidsbesparelse er gjennomført.
